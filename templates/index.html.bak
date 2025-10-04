@@ -3,25 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScarletScanner</title>
-    <link rel="icon" href="/static/images/scarletscanner-logo.png">
-    <!-- Rutgers Official Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>ScarletScanner - Rutgers Product Scanner</title>
     <style>
-        /* Custom Rutgers Font Faces */
-        @font-face {
-            font-family: 'Formata BQ';
-            src: local('Arial'), local('Helvetica Neue'), local('Helvetica');
-            font-weight: normal;
-            font-style: normal;
-        }
-
-        @font-face {
-            font-family: 'ITC Giovanni';
-            src: local('Georgia'), local('Times New Roman');
-            font-weight: normal;
-            font-style: normal;
-        }
         * {
             margin: 0;
             padding: 0;
@@ -29,7 +12,7 @@
         }
 
         body {
-            font-family: 'Noto Sans', 'Formata BQ', Arial, Helvetica, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #CC0033 0%, #8B0000 100%);
             min-height: 100vh;
             padding: 20px;
@@ -47,25 +30,9 @@
         }
 
         h1 {
-            font-family: 'Noto Serif', 'ITC Giovanni', Georgia, serif;
             font-size: 2.5em;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        h2, h3 {
-            font-family: 'Noto Serif', 'ITC Giovanni', Georgia, serif;
-        }
-
-        .rutgers-logo {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
         }
 
         .subtitle {
@@ -100,7 +67,7 @@
 
         input[type="text"]:focus {
             outline: none;
-            border-color: #CC0033;
+            border-color: #667eea;
         }
 
         button {
@@ -116,7 +83,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #CC0033 0%, #8B0000 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
 
@@ -188,7 +155,7 @@
 
         .spinner {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #CC0033;
+            border-top: 4px solid #667eea;
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -212,7 +179,7 @@
         }
 
         .success-message {
-            background: #A00000;
+            background: #27ae60;
             color: white;
             padding: 15px;
             border-radius: 8px;
@@ -309,8 +276,8 @@
             font-weight: bold;
         }
 
-        .score-a { background: #A00000; color: white; }
-        .score-b { background: #CC0033; color: white; }
+        .score-a { background: #27ae60; color: white; }
+        .score-b { background: #2ecc71; color: white; }
         .score-c { background: #f39c12; color: white; }
         .score-d { background: #e67e22; color: white; }
         .score-e { background: #e74c3c; color: white; }
@@ -332,7 +299,7 @@
         }
 
         .nutrition-table th {
-            background: linear-gradient(135deg, #CC0033 0%, #8B0000 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             font-weight: bold;
             text-transform: uppercase;
@@ -356,7 +323,7 @@
             color: #2c3e50;
             margin-bottom: 15px;
             padding-bottom: 10px;
-            border-bottom: 3px solid #CC0033;
+            border-bottom: 3px solid #667eea;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -364,7 +331,7 @@
         }
 
         .section-title:hover {
-            color: #CC0033;
+            color: #667eea;
         }
 
         .toggle-icon {
@@ -457,7 +424,7 @@
 
         .metric-score {
             font-weight: bold;
-            color: #CC0033;
+            color: #667eea;
             font-size: 1.1em;
         }
 
@@ -472,7 +439,7 @@
 
         .metric-fill {
             height: 100%;
-            background: linear-gradient(90deg, #CC0033, #8B0000);
+            background: linear-gradient(90deg, #667eea, #764ba2);
             border-radius: 10px;
             transition: width 0.5s ease;
         }
@@ -490,8 +457,8 @@
             height: 80px;
             border-radius: 50%;
             background: conic-gradient(
-                #CC0033 0deg,
-                #CC0033 calc(var(--percentage) * 3.6deg),
+                #667eea 0deg,
+                #667eea calc(var(--percentage) * 3.6deg),
                 #e0e0e0 calc(var(--percentage) * 3.6deg),
                 #e0e0e0 360deg
             );
@@ -515,7 +482,7 @@
             position: relative;
             z-index: 1;
             font-weight: bold;
-            color: #CC0033;
+            color: #667eea;
             font-size: 0.9em;
         }
     </style>
@@ -523,11 +490,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>
-                <img src="/static/images/scarletscanner-logo.png" alt="ScarletScanner Logo" class="rutgers-logo">
-                ScarletScanner
-            </h1>
-            <p class="subtitle">Rutgers Product Sustainability & Nutrition Scanner</p>
+            <h1>🔍 Product Scanner</h1>
+            <p class="subtitle">Discover sustainability and nutrition information</p>
         </header>
 
         <div class="scanner-section">

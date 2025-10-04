@@ -1,6 +1,7 @@
 """
-Product Scanner Flask Application
-Provides barcode scanning functionality with Open Food Facts API integration
+ScarletScanner - Rutgers Product Sustainability Scanner
+Flask web application for scanning product barcodes
+Displays Nutri-Score, Eco-Score, and HowGood sustainability metrics
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -11,6 +12,7 @@ from groq import Groq
 import json
 
 app = Flask(__name__)
+app.secret_key = 'scarletscanner-rutgers-2025'
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -35,71 +37,85 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def generate_ai_scores(product_info):
+def generate_score_summary(score_type, grade, product_name):
     """
-    Use AI to generate Nutri-Score and Eco-Score ratings with summaries
-    when they're not available from the API
-
-    Args:
-        product_info (dict): Product information including nutrients and ingredients
-
-    Returns:
-        dict: AI-generated scores and summaries
+    Generate AI-powered summary for Nutri-Score or Eco-Score
     """
     if not client:
-        return {
-            'nutriscore': 'C',
-            'nutriscore_summary': 'AI analysis unavailable - API key not configured',
-            'ecoscore': 'C',
-            'ecoscore_summary': 'AI analysis unavailable - API key not configured'
-        }
+        return f"{score_type}: {grade}"
 
     try:
-        # Prepare product data for AI analysis
-        prompt = f"""Analyze this food product and provide:
-1. A Nutri-Score rating (A=healthiest to E=least healthy)
-2. A brief summary explaining the Nutri-Score (2-3 sentences)
-3. An Eco-Score rating (A=most sustainable to E=least sustainable)
-4. A brief summary explaining the Eco-Score (2-3 sentences)
+        prompt = f"""Provide a brief 2-sentence summary for this product's {score_type}.
+Product: {product_name}
+{score_type}: {grade}
+
+Explain what this grade means and why it matters. Be concise and helpful."""
+
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
+            temperature=0.7,
+            max_tokens=150,
+        )
+
+        return chat_completion.choices[0].message.content.strip()
+
+    except Exception as e:
+        print(f"AI summary error: {e}")
+        return f"{score_type}: {grade}"
+
+
+def generate_sustainability_metrics(product_info):
+    """
+    Generate HowGood-style sustainability metrics analysis for the product
+    Returns scores (0-10) for 8 core sustainability metrics
+    """
+    if not client:
+        return None
+
+    try:
+        prompt = f"""Analyze this food product using HowGood's 8 core sustainability metrics. Based on publicly available data about typical products in this category, provide scores from 0-10 (10 being best) for each metric.
 
 Product Information:
 - Name: {product_info.get('name', 'Unknown')}
 - Brand: {product_info.get('brand', 'Unknown')}
 - Categories: {product_info.get('categories', 'Unknown')}
 - Ingredients: {product_info.get('ingredients', 'Not available')}
-- Nutrition per 100g:
-  * Energy: {product_info['nutriments'].get('energy', 'N/A')} kcal
-  * Fat: {product_info['nutriments'].get('fat', 'N/A')} g
-  * Carbohydrates: {product_info['nutriments'].get('carbohydrates', 'N/A')} g
-  * Proteins: {product_info['nutriments'].get('proteins', 'N/A')} g
-  * Salt: {product_info['nutriments'].get('salt', 'N/A')} g
-  * Fiber: {product_info['nutriments'].get('fiber', 'N/A')} g
 - Labels: {product_info.get('labels', 'None')}
 
-Please respond in JSON format:
+Provide scores (0-10) and brief explanations for:
+
+1. **Greenhouse Gas Emissions**: Carbon footprint (cradle-to-farm gate) of ingredients
+2. **Processing**: Energy used to process the ingredients
+3. **Blue Water Usage**: Water required to grow the ingredients
+4. **Land Occupation**: Land required to produce the ingredients
+5. **Soil Health**: Impact on soil from growing ingredients
+6. **Labor Risk**: Overall labor risk in ingredient production
+7. **Animal Welfare**: How animals are treated (if applicable)
+8. **Biodiversity**: Impact on biodiversity from growing ingredients
+
+Respond in JSON format:
 {{
-  "nutriscore": "A/B/C/D/E",
-  "nutriscore_summary": "explanation here",
-  "ecoscore": "A/B/C/D/E",
-  "ecoscore_summary": "explanation here"
+  "greenhouse_gas": {{"score": 7, "explanation": "Low emissions due to..."}},
+  "processing": {{"score": 6, "explanation": "Moderate processing..."}},
+  "water_usage": {{"score": 5, "explanation": "Average water use..."}},
+  "land_use": {{"score": 8, "explanation": "Efficient land use..."}},
+  "soil_health": {{"score": 7, "explanation": "Minimal soil impact..."}},
+  "labor_risk": {{"score": 6, "explanation": "Moderate labor standards..."}},
+  "animal_welfare": {{"score": 5, "explanation": "Standard practices..." or "N/A - plant-based"}},
+  "biodiversity": {{"score": 6, "explanation": "Neutral biodiversity impact..."}}
 }}"""
 
         chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            model="llama-3.1-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
             temperature=0.5,
-            max_tokens=1024,
+            max_tokens=1000,
         )
 
-        # Parse AI response
         response_text = chat_completion.choices[0].message.content
 
-        # Extract JSON from response (handle potential markdown formatting)
+        # Extract JSON from response
         if '```json' in response_text:
             json_start = response_text.find('```json') + 7
             json_end = response_text.find('```', json_start)
@@ -109,109 +125,16 @@ Please respond in JSON format:
             json_end = response_text.find('```', json_start)
             response_text = response_text[json_start:json_end].strip()
 
-        ai_scores = json.loads(response_text)
-
-        return {
-            'nutriscore': ai_scores.get('nutriscore', 'C').upper(),
-            'nutriscore_summary': ai_scores.get('nutriscore_summary', 'Analysis completed'),
-            'ecoscore': ai_scores.get('ecoscore', 'C').upper(),
-            'ecoscore_summary': ai_scores.get('ecoscore_summary', 'Analysis completed'),
-            'ai_generated': True
-        }
+        metrics = json.loads(response_text)
+        return metrics
 
     except Exception as e:
-        print(f"AI analysis error: {e}")
-        return {
-            'nutriscore': 'C',
-            'nutriscore_summary': 'Unable to generate detailed analysis',
-            'ecoscore': 'C',
-            'ecoscore_summary': 'Unable to generate detailed analysis',
-            'ai_generated': True
-        }
+        print(f"Sustainability metrics error: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return None
 
 
-def fetch_product_data(barcode):
-    """
-    Fetch product information from Open Food Facts API
-
-    Args:
-        barcode (str): Product barcode number
-
-    Returns:
-        dict: Product data or error information
-    """
-    try:
-        # Make API request
-        url = OPEN_FOOD_FACTS_API.format(barcode)
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-
-        # Check if product exists
-        if data.get('status') != 1:
-            return {
-                'success': False,
-                'error': 'Product not found in database'
-            }
-
-        product = data.get('product', {})
-
-        # Extract and format product information
-        product_info = {
-            'success': True,
-            'barcode': barcode,
-            'name': product.get('product_name', 'Unknown Product'),
-            'brand': product.get('brands', 'Unknown Brand'),
-            'image': product.get('image_url', ''),
-            'nutriscore': product.get('nutriscore_grade', '').upper(),
-            'ecoscore': product.get('ecoscore_grade', '').upper(),
-            'categories': product.get('categories', ''),
-            'ingredients': product.get('ingredients_text', 'Not available'),
-            'labels': product.get('labels', ''),
-            'allergens': product.get('allergens', 'None specified'),
-            'nutriments': {
-                'energy': product.get('nutriments', {}).get('energy-kcal_100g', 'N/A'),
-                'fat': product.get('nutriments', {}).get('fat_100g', 'N/A'),
-                'carbohydrates': product.get('nutriments', {}).get('carbohydrates_100g', 'N/A'),
-                'proteins': product.get('nutriments', {}).get('proteins_100g', 'N/A'),
-                'salt': product.get('nutriments', {}).get('salt_100g', 'N/A'),
-                'fiber': product.get('nutriments', {}).get('fiber_100g', 'N/A')
-            }
-        }
-
-        # Generate AI scores if either score is missing
-        if not product_info['nutriscore'] or not product_info['ecoscore']:
-            ai_scores = generate_ai_scores(product_info)
-
-            # Use AI scores only if original scores are missing
-            if not product_info['nutriscore']:
-                product_info['nutriscore'] = ai_scores['nutriscore']
-                product_info['nutriscore_summary'] = ai_scores['nutriscore_summary']
-                product_info['nutriscore_ai'] = True
-
-            if not product_info['ecoscore']:
-                product_info['ecoscore'] = ai_scores['ecoscore']
-                product_info['ecoscore_summary'] = ai_scores['ecoscore_summary']
-                product_info['ecoscore_ai'] = True
-
-        return product_info
-
-    except requests.exceptions.Timeout:
-        return {
-            'success': False,
-            'error': 'Request timed out. Please try again.'
-        }
-    except requests.exceptions.RequestException as e:
-        return {
-            'success': False,
-            'error': f'Network error: Unable to fetch product data'
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': 'An unexpected error occurred'
-        }
 
 
 @app.route('/')
@@ -223,10 +146,7 @@ def index():
 @app.route('/scan', methods=['POST'])
 def scan_barcode():
     """
-    Handle barcode scan requests
-
-    Expects JSON with 'barcode' field
-    Returns product information from Open Food Facts
+    Handle barcode scan requests and return product information with Nutri-Score and Eco-Score
     """
     try:
         data = request.get_json()
@@ -245,18 +165,89 @@ def scan_barcode():
                 'error': 'Barcode cannot be empty'
             }), 400
 
-        # Fetch product data
-        product_data = fetch_product_data(barcode)
+        # Fetch product data from Open Food Facts
+        url = OPEN_FOOD_FACTS_API.format(barcode)
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
 
-        if not product_data['success']:
-            return jsonify(product_data), 404
+        api_data = response.json()
 
-        return jsonify(product_data), 200
+        if api_data.get('status') != 1:
+            return jsonify({
+                'success': False,
+                'error': 'Product not found in database'
+            }), 404
 
-    except Exception as e:
+        product = api_data.get('product', {})
+
+        # Helper function to round nutrient values
+        def round_nutrient(value):
+            if value == 'N/A' or value is None:
+                return 'N/A'
+            try:
+                return round(float(value), 2)
+            except (ValueError, TypeError):
+                return 'N/A'
+
+        # Extract product information
+        product_info = {
+            'success': True,
+            'barcode': barcode,
+            'name': product.get('product_name', 'Unknown Product'),
+            'brand': product.get('brands', 'Unknown Brand'),
+            'image': product.get('image_url', ''),
+            'categories': product.get('categories', ''),
+            'ingredients': product.get('ingredients_text', 'Not available'),
+            'labels': product.get('labels', ''),
+            'packaging': product.get('packaging', 'Unknown'),
+            'allergens': product.get('allergens', 'None specified'),
+            'nutriments': {
+                'energy': round_nutrient(product.get('nutriments', {}).get('energy-kcal_100g')),
+                'fat': round_nutrient(product.get('nutriments', {}).get('fat_100g')),
+                'carbohydrates': round_nutrient(product.get('nutriments', {}).get('carbohydrates_100g')),
+                'proteins': round_nutrient(product.get('nutriments', {}).get('proteins_100g')),
+                'salt': round_nutrient(product.get('nutriments', {}).get('salt_100g')),
+                'fiber': round_nutrient(product.get('nutriments', {}).get('fiber_100g'))
+            }
+        }
+
+        # Get Nutri-Score and Eco-Score
+        nutriscore_grade = product.get('nutriscore_grade', '').upper()
+        ecoscore_grade = product.get('ecoscore_grade', '').upper()
+
+        # Generate AI summaries for both scores
+        nutriscore_summary = generate_score_summary('Nutri-Score', nutriscore_grade or 'Not Available', product_info['name'])
+        ecoscore_summary = generate_score_summary('Eco-Score', ecoscore_grade or 'Not Available', product_info['name'])
+
+        product_info['nutriscore_grade'] = nutriscore_grade or 'N/A'
+        product_info['ecoscore_grade'] = ecoscore_grade or 'N/A'
+        product_info['nutriscore_summary'] = nutriscore_summary
+        product_info['ecoscore_summary'] = ecoscore_summary
+
+        # Generate HowGood sustainability metrics
+        sustainability_metrics = generate_sustainability_metrics(product_info)
+        if sustainability_metrics:
+            product_info['sustainability_metrics'] = sustainability_metrics
+
+        return jsonify(product_info), 200
+
+    except requests.exceptions.Timeout:
         return jsonify({
             'success': False,
-            'error': 'Server error processing request'
+            'error': 'Request timed out. Please try again.'
+        }), 500
+    except requests.exceptions.RequestException:
+        return jsonify({
+            'success': False,
+            'error': 'Network error: Unable to fetch product data'
+        }), 500
+    except Exception as e:
+        import traceback
+        print(f"Error in scan_barcode: {e}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'error': f'An unexpected error occurred: {str(e)}'
         }), 500
 
 
@@ -321,5 +312,4 @@ def too_large(e):
 
 if __name__ == '__main__':
     # Run the application
-    # Debug mode enabled for development - disable in production
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=8080)
