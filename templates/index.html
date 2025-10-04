@@ -114,10 +114,19 @@
             position: relative;
             width: 100%;
             max-width: 640px;
+            min-height: 480px;
             margin: 20px auto;
             display: none;
             border-radius: 10px;
             overflow: hidden;
+            background: #000;
+        }
+
+        #videoContainer video,
+        #videoContainer canvas {
+            width: 100%;
+            height: auto;
+            display: block;
         }
 
         #video {
@@ -167,6 +176,19 @@
             margin: 20px 0;
             display: none;
             animation: slideIn 0.3s ease-out;
+        }
+
+        .success-message {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
         }
 
         @keyframes slideIn {
@@ -383,10 +405,7 @@
                 <button id="stopBtn" class="btn-danger" style="display: none;">⏹️ Stop Camera</button>
             </div>
 
-            <div id="videoContainer">
-                <video id="video" autoplay playsinline></video>
-                <div class="scanner-overlay"></div>
-            </div>
+            <div id="videoContainer"></div>
 
             <div class="input-group">
                 <input type="text" id="barcodeInput" placeholder="Or enter barcode manually...">
@@ -399,9 +418,13 @@
             <p>Fetching product information...</p>
         </div>
 
+        <div class="success-message" id="successMessage">✅ Barcode scanned successfully!</div>
         <div class="error-message" id="errorMessage"></div>
 
         <div class="product-card" id="productCard">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button id="newScanBtn" class="btn-primary" style="display: none;">📷 Scan Another Product</button>
+            </div>
             <div class="product-header">
                 <img id="productImage" class="product-image" src="" alt="Product">
                 <div class="product-info">
@@ -480,8 +503,10 @@
         const barcodeInput = document.getElementById('barcodeInput');
         const searchBtn = document.getElementById('searchBtn');
         const loading = document.getElementById('loading');
+        const successMessage = document.getElementById('successMessage');
         const errorMessage = document.getElementById('errorMessage');
         const productCard = document.getElementById('productCard');
+        const newScanBtn = document.getElementById('newScanBtn');
 
         let isScanning = false;
         let lastScannedCode = null;
@@ -515,6 +540,14 @@
             }
         });
 
+        // New scan button
+        newScanBtn.addEventListener('click', () => {
+            hideSuccess();
+            hideProduct();
+            barcodeInput.value = '';
+            startScanner();
+        });
+
         // Start barcode scanner
         function startScanner() {
             videoContainer.style.display = 'block';
@@ -526,13 +559,26 @@
                 inputStream: {
                     name: "Live",
                     type: "LiveStream",
-                    target: document.querySelector('#video'),
+                    target: document.querySelector('#videoContainer'),
                     constraints: {
-                        width: 640,
-                        height: 480,
-                        facingMode: "environment"
+                        width: { min: 640, ideal: 1280 },
+                        height: { min: 480, ideal: 720 },
+                        facingMode: "environment",
+                        aspectRatio: { min: 1, max: 2 }
+                    },
+                    area: { // Focus area for scanning
+                        top: "20%",
+                        right: "10%",
+                        left: "10%",
+                        bottom: "20%"
                     }
                 },
+                locator: {
+                    patchSize: "medium",
+                    halfSample: true
+                },
+                numOfWorkers: 4,
+                frequency: 10,
                 decoder: {
                     readers: [
                         "ean_reader",
@@ -540,15 +586,18 @@
                         "code_128_reader",
                         "upc_reader",
                         "upc_e_reader"
-                    ]
-                }
+                    ],
+                    multiple: false // Only decode one barcode at a time
+                },
+                locate: true
             }, function(err) {
                 if (err) {
                     console.error(err);
-                    showError('Camera access denied or not available');
+                    showError('Camera access denied or not available: ' + err.message);
                     stopScanner();
                     return;
                 }
+                console.log("Quagga initialized successfully");
                 Quagga.start();
             });
 
@@ -572,11 +621,37 @@
 
             const code = result.codeResult.code;
 
+            // Validate barcode (must be numeric and reasonable length)
+            if (!code || !/^\d+$/.test(code) || code.length < 8 || code.length > 14) {
+                console.log("Invalid barcode detected:", code);
+                return;
+            }
+
             // Avoid duplicate scans
             if (code === lastScannedCode) return;
 
+            // Check detection quality - only accept high confidence scans
+            const errors = result.codeResult.decodedCodes
+                .filter(c => c.error !== undefined)
+                .map(c => c.error);
+
+            const avgError = errors.length > 0 ? errors.reduce((sum, err) => sum + err, 0) / errors.length : 0;
+
+            if (avgError > 0.1) {
+                console.log("Low confidence scan, avg error:", avgError);
+                return;
+            }
+
+            console.log("Valid barcode detected:", code, "with confidence:", (1 - avgError).toFixed(2));
+
             lastScannedCode = code;
             scanCooldown = true;
+
+            // Stop camera immediately after successful scan
+            stopScanner();
+
+            // Show success message
+            showSuccess();
 
             barcodeInput.value = code;
             searchProduct(code);
@@ -716,7 +791,8 @@
             // Allergens
             document.getElementById('allergens').textContent = data.allergens || 'None specified';
 
-            // Show product card
+            // Show new scan button and product card
+            newScanBtn.style.display = 'inline-block';
             productCard.style.display = 'block';
         }
 
@@ -751,6 +827,18 @@
             loading.style.display = 'none';
         }
 
+        function showSuccess() {
+            successMessage.style.display = 'block';
+            // Auto-hide success message after 3 seconds
+            setTimeout(() => {
+                hideSuccess();
+            }, 3000);
+        }
+
+        function hideSuccess() {
+            successMessage.style.display = 'none';
+        }
+
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.style.display = 'block';
@@ -762,6 +850,7 @@
 
         function hideProduct() {
             productCard.style.display = 'none';
+            newScanBtn.style.display = 'none';
         }
     </script>
 </body>
