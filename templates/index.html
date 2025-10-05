@@ -538,8 +538,8 @@
             height: 200px;
             border-radius: 50%;
             background: conic-gradient(
-                #CC0033 0deg,
-                #CC0033 0deg,
+                var(--color, #999) 0deg,
+                var(--color, #999) 0deg,
                 #e0e0e0 0deg,
                 #e0e0e0 360deg
             );
@@ -553,8 +553,8 @@
 
         .overall-score-pie.animated {
             background: conic-gradient(
-                #CC0033 0deg,
-                #CC0033 calc(var(--score) * 36deg),
+                var(--color, #999) 0deg,
+                var(--color, #999) calc(var(--score) * 36deg),
                 #e0e0e0 calc(var(--score) * 36deg),
                 #e0e0e0 360deg
             );
@@ -578,7 +578,6 @@
         .overall-score-value {
             font-size: 3.5em;
             font-weight: bold;
-            color: #CC0033;
             line-height: 1;
         }
 
@@ -1296,13 +1295,14 @@
                 const metricsContent = document.getElementById('sustainabilityMetricsContent');
                 const metricsSection = document.getElementById('sustainabilityMetricsSection');
                 const overallScore = data.overall_sustainability_score || 0;
+                const overallColor = getScoreColor(overallScore);
 
                 let metricsHTML = `
                     <div class="overall-score-container">
                         <h3 class="overall-score-title">Overall Sustainability Score</h3>
-                        <div class="overall-score-pie" style="--score: ${overallScore}" id="overallScorePie">
+                        <div class="overall-score-pie" style="--score: ${overallScore}; --color: ${overallColor}" id="overallScorePie">
                             <div class="overall-score-text">
-                                <div class="overall-score-value" id="overallScoreValue">0</div>
+                                <div class="overall-score-value" id="overallScoreValue" style="color: ${overallColor};">0</div>
                                 <div class="overall-score-max">/10</div>
                             </div>
                         </div>
@@ -1328,19 +1328,20 @@
                         const score = metrics[metric.key].score;
                         const explanation = metrics[metric.key].explanation;
                         const percentage = score * 10; // Convert 0-10 score to 0-100 percentage
+                        const color = getScoreColor(score);
 
                         metricsHTML += `
                             <div class="metric-item">
-                                <div class="pie-chart" style="--percentage: ${percentage}">
-                                    <div class="pie-chart-label">${score}/10</div>
+                                <div class="pie-chart" style="--percentage: ${percentage}; background: conic-gradient(${color} 0deg, ${color} calc(${percentage} * 3.6deg), #e0e0e0 calc(${percentage} * 3.6deg), #e0e0e0 360deg);">
+                                    <div class="pie-chart-label" style="color: ${color};">${score}/10</div>
                                 </div>
                                 <div class="metric-content">
                                     <div class="metric-header">
                                         <span class="metric-name">${metric.icon} ${metric.name}</span>
-                                        <span class="metric-score">${score}/10</span>
+                                        <span class="metric-score" style="color: ${color};">${score}/10</span>
                                     </div>
                                     <div class="metric-bar">
-                                        <div class="metric-fill" style="width: ${percentage}%"></div>
+                                        <div class="metric-fill" style="width: ${percentage}%; background: ${color};"></div>
                                     </div>
                                     <p class="metric-explanation">${explanation}</p>
                                 </div>
@@ -1434,6 +1435,27 @@
             // Show new scan button and product card
             newScanBtn.style.display = 'inline-block';
             productCard.style.display = 'block';
+        }
+
+        // Get color based on score (0-10)
+        function getScoreColor(score) {
+            if (score >= 1 && score < 3) {
+                // Red
+                return '#d32f2f';
+            } else if (score >= 3 && score < 5) {
+                // Between red and orange
+                return '#f57c00';
+            } else if (score >= 5 && score < 7) {
+                // Orange (medium)
+                return '#ff9800';
+            } else if (score >= 7 && score < 9) {
+                // Between orange and green
+                return '#9ccc65';
+            } else if (score >= 9 && score <= 10) {
+                // Green
+                return '#4caf50';
+            }
+            return '#999'; // Default gray for invalid scores
         }
 
         // Create score badge HTML
