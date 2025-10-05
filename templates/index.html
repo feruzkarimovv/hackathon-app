@@ -886,11 +886,11 @@
         }
 
         .combined-score-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 25px;
             border-radius: 12px;
             text-align: center;
             color: white;
+            /* Background will be set dynamically via inline styles */
         }
 
         .combined-score-title {
@@ -1533,16 +1533,22 @@
                                     `;
                                 }).join('')}
                             </div>
-                            ${data.combined_overall_score !== undefined ? `
-                                <div class="combined-score-section">
-                                    <div class="combined-score-title">Combined Overall Score</div>
-                                    <div class="combined-score-display">${data.combined_overall_score}/100</div>
-                                    <div class="combined-score-breakdown">
-                                        Product Sustainability: ${data.overall_sustainability_score}/100 +
-                                        Community Impact: ${data.community_impact_score}/100
+                            ${data.combined_overall_score !== undefined ? (() => {
+                                const combinedScore = data.combined_overall_score;
+                                const combinedColor = getScoreColorFor100(combinedScore);
+                                // Create gradient background based on score color
+                                const bgGradient = `linear-gradient(135deg, ${combinedColor} 0%, ${adjustColorBrightness(combinedColor, -20)} 100%)`;
+                                return `
+                                    <div class="combined-score-section" style="background: ${bgGradient};">
+                                        <div class="combined-score-title">Combined Overall Score</div>
+                                        <div class="combined-score-display">${combinedScore}/100</div>
+                                        <div class="combined-score-breakdown">
+                                            Product Sustainability: ${data.overall_sustainability_score}/100 +
+                                            Community Impact: ${data.community_impact_score}/100
+                                        </div>
                                     </div>
-                                </div>
-                            ` : ''}
+                                `;
+                            })() : ''}
                         </div>
                     `;
                     metricsContent.innerHTML += communityImpactHTML;
@@ -1627,6 +1633,19 @@
                 return '#4caf50';
             }
             return '#999'; // Default gray for invalid scores
+        }
+
+        // Adjust color brightness for gradient effect
+        function adjustColorBrightness(color, percent) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = (num >> 16) + amt;
+            const G = (num >> 8 & 0x00FF) + amt;
+            const B = (num & 0x0000FF) + amt;
+            return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+                (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+                (B < 255 ? B < 1 ? 0 : B : 255))
+                .toString(16).slice(1);
         }
 
         // Get color based on score (0-100)
