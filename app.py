@@ -10,6 +10,8 @@ import os
 from werkzeug.utils import secure_filename
 from groq import Groq
 import json
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = 'scarletscanner-rutgers-2025'
@@ -28,7 +30,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 OPEN_FOOD_FACTS_API = "https://world.openfoodfacts.org/api/v2/product/{}.json"
 
 # Initialize Groq client
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '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')
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 
@@ -390,4 +392,4 @@ def too_large(e):
 
 if __name__ == '__main__':
     # Run the application
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    app.run(debug=True, host='0.0.0.0', port=5001)

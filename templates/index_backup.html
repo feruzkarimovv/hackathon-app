@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScarletScanner</title>
+    <link rel="icon" href="/static/images/scarletscanner-logo.png">
+    <!-- Rutgers Official Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Rutgers Font Faces */
+        @font-face {
+            font-family: 'Formata BQ';
+            src: local('Arial'), local('Helvetica Neue'), local('Helvetica');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: 'ITC Giovanni';
+            src: local('Georgia'), local('Times New Roman');
+            font-weight: normal;
+            font-style: normal;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans', 'Formata BQ', Arial, Helvetica, sans-serif;
+            background: linear-gradient(135deg, #CC0033 0%, #8B0000 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-family: 'Noto Serif', 'ITC Giovanni', Georgia, serif;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        h2, h3 {
+            font-family: 'Noto Serif', 'ITC Giovanni', Georgia, serif;
+        }
+
+        .rutgers-logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .scanner-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #CC0033;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #CC0033 0%, #8B0000 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        #videoContainer {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            min-height: 480px;
+            margin: 20px auto;
+            display: none;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+            min-height: 0;
+            height: auto;
+            background: transparent;
+        }
+
+        #videoContainer video,
+        #videoContainer canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        #video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 60%;
+            border: 3px solid #00ff00;
+            border-radius: 10px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #CC0033;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .success-message {
+            background: #A00000;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .product-header {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .product-image {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 10px;
+            border: 2px solid #eee;
+        }
+
+        .product-info {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .product-name {
+            font-size: 2em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .product-brand {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .scores {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .score-badge {
+            text-align: center;
+            padding: 15px 25px;
+            border-radius: 10px;
+            min-width: 120px;
+        }
+
+        .score-label {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .score-value {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .score-a { background: #A00000; color: white; }
+        .score-b { background: #CC0033; color: white; }
+        .score-c { background: #f39c12; color: white; }
+        .score-d { background: #e67e22; color: white; }
+        .score-e { background: #e74c3c; color: white; }
+        .score-unknown { background: #95a5a6; color: white; }
+
+        .nutrition-table {
+            width: 100%;
+            margin: 30px 0;
+            border-collapse: collapse;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        .nutrition-table th,
+        .nutrition-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .nutrition-table th {
+            background: linear-gradient(135deg, #CC0033 0%, #8B0000 100%);
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nutrition-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .nutrition-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .section {
+            margin: 30px 0;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #CC0033;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title:hover {
+            color: #CC0033;
+        }
+
+        .toggle-icon {
+            font-size: 0.8em;
+            transition: transform 0.3s;
+        }
+
+        .toggle-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .section-content {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+
+        .section-content.collapsed {
+            display: none;
+        }
+
+        .labels {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .label-tag {
+            background: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .product-header {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .product-image {
+                width: 150px;
+                height: 150px;
+            }
+
+            .scores {
+                justify-content: center;
+            }
+        }
+
+        /* Sustainability Metrics Styles */
+        .metric-item {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .metric-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .metric-content {
+            flex: 1;
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .metric-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.05em;
+        }
+
+        .metric-score {
+            font-weight: bold;
+            color: #CC0033;
+            font-size: 1.1em;
+        }
+
+        .metric-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .metric-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #CC0033, #8B0000);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .metric-explanation {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Pie Chart Styles */
+        .pie-chart {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: conic-gradient(
+                #CC0033 0deg,
+                #CC0033 calc(var(--percentage) * 3.6deg),
+                #e0e0e0 calc(var(--percentage) * 3.6deg),
+                #e0e0e0 360deg
+            );
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .pie-chart::before {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .pie-chart-label {
+            position: relative;
+            z-index: 1;
+            font-weight: bold;
+            color: #CC0033;
+            font-size: 0.9em;
+        }
+
+        /* Overall Score Pie Chart */
+        .overall-score-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .overall-score-pie {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: conic-gradient(
+                #CC0033 0deg,
+                #CC0033 0deg,
+                #e0e0e0 0deg,
+                #e0e0e0 360deg
+            );
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            transition: all 1s ease-out;
+        }
+
+        .overall-score-pie.animated {
+            background: conic-gradient(
+                #CC0033 0deg,
+                #CC0033 calc(var(--score) * 36deg),
+                #e0e0e0 calc(var(--score) * 36deg),
+                #e0e0e0 360deg
+            );
+        }
+
+        .overall-score-pie::before {
+            content: '';
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .overall-score-text {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .overall-score-value {
+            font-size: 3.5em;
+            font-weight: bold;
+            color: #CC0033;
+            line-height: 1;
+        }
+
+        .overall-score-max {
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .overall-score-title {
+            font-family: 'Noto Serif', 'ITC Giovanni', Georgia, serif;
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .overall-score-description {
+            color: #666;
+            font-size: 1em;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        @keyframes scoreAnimation {
+            from {
+                --score: 0;
+            }
+        }
+
+        /* Waste Reduction Tips Styles */
+        .waste-tips-container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid #CC0033;
+        }
+
+        .waste-tips-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .waste-tips-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .waste-tip-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .waste-tip-item:last-child {
+            border-bottom: none;
+        }
+
+        .waste-tip-icon {
+            font-size: 1.3em;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .waste-tip-content {
+            flex: 1;
+        }
+
+        .waste-tip-text {
+            color: #555;
+            line-height: 1.5;
+            font-size: 0.9em;
+        }
+
+        .waste-tip-text strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <img src="/static/images/scarletscanner-logo.png" alt="ScarletScanner Logo" class="rutgers-logo">
+                ScarletScanner
+            </h1>
+            <p class="subtitle">Rutgers Product Sustainability & Nutrition Scanner</p>
+        </header>
+
+        <div class="scanner-section">
+            <h2 style="margin-bottom: 20px; color: #2c3e50;">Scan or Enter Barcode</h2>
+
+            <div class="input-group">
+                <button id="scanBtn" class="btn-primary">📷 Scan Barcode</button>
+                <button id="stopBtn" class="btn-danger" style="display: none;">⏹️ Stop Camera</button>
+            </div>
+
+            <div id="videoContainer"></div>
+
+            <div class="input-group">
+                <input type="text" id="barcodeInput" placeholder="Or enter barcode manually...">
+                <button id="searchBtn" class="btn-primary">🔎 Search</button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Fetching product information...</p>
+        </div>
+
+        <div class="success-message" id="successMessage">✅ Barcode scanned successfully!</div>
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="product-card" id="productCard">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button id="newScanBtn" class="btn-primary" style="display: none;">📷 Scan Another Product</button>
+            </div>
+            <div class="product-header">
+                <img id="productImage" class="product-image" src="" alt="Product">
+                <div class="product-info">
+                    <h2 class="product-name" id="productName"></h2>
+                    <p class="product-brand" id="productBrand"></p>
+                    <div class="scores" id="scores"></div>
+                </div>
+            </div>
+
+            <!-- AI Analysis Summaries -->
+            <div id="aiSummaries" style="display: none;">
+                <div id="nutriscoreSummary" class="section" style="display: none;">
+                    <div class="section-title" onclick="toggleSection('nutriscoreSummaryContent')">
+                        <span>🤖 Nutri-Score Analysis (AI-Generated)</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="section-content" id="nutriscoreSummaryContent"></div>
+                </div>
+
+                <div id="ecoscoreSummary" class="section" style="display: none;">
+                    <div class="section-title" onclick="toggleSection('ecoscoreSummaryContent')">
+                        <span>🤖 Eco-Score Analysis (AI-Generated)</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="section-content" id="ecoscoreSummaryContent"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">Nutrition Facts (per 100g)</h3>
+                <table class="nutrition-table">
+                    <thead>
+                        <tr>
+                            <th>Nutrient</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nutritionTable"></tbody>
+                </table>
+            </div>
+
+            <div class="section" id="sustainabilityMetricsSection" style="display: none;">
+                <div class="section-title" onclick="toggleSection('sustainabilityMetrics')">
+                    <span>🌍 Sustainability Metrics</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content expanded" id="sustainabilityMetrics">
+                    <p style="color: #666; margin-bottom: 20px; font-size: 0.95em;">Environmental and social impact assessment across 8 core metrics (0-10 scale, 10 being best)</p>
+                    <div id="sustainabilityMetricsContent"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title" onclick="toggleSection('ingredients')">
+                    <span>📋 Ingredients</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content" id="ingredients"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title" onclick="toggleSection('labels')">
+                    <span>🏷️ Labels & Certifications</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content" id="labels"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title" onclick="toggleSection('allergens')">
+                    <span>⚠️ Allergens</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content" id="allergens"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quagga.js for barcode scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+
+    <script>
+        // DOM Elements
+        const scanBtn = document.getElementById('scanBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const videoContainer = document.getElementById('videoContainer');
+        const barcodeInput = document.getElementById('barcodeInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const successMessage = document.getElementById('successMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const productCard = document.getElementById('productCard');
+        const newScanBtn = document.getElementById('newScanBtn');
+
+        let isScanning = false;
+        let lastScannedCode = null;
+        let scanCooldown = false;
+
+        // Start camera scanning
+        scanBtn.addEventListener('click', () => {
+            startScanner();
+        });
+
+        // Stop camera scanning
+        stopBtn.addEventListener('click', () => {
+            stopScanner();
+        });
+
+        // Manual search
+        searchBtn.addEventListener('click', () => {
+            const barcode = barcodeInput.value.trim();
+            if (barcode) {
+                searchProduct(barcode);
+            }
+        });
+
+        // Enter key support
+        barcodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const barcode = barcodeInput.value.trim();
+                if (barcode) {
+                    searchProduct(barcode);
+                }
+            }
+        });
+
+        // New scan button
+        newScanBtn.addEventListener('click', () => {
+            hideSuccess();
+            hideProduct();
+            barcodeInput.value = '';
+            startScanner();
+        });
+
+        // Start barcode scanner
+        function startScanner() {
+            videoContainer.style.display = 'block';
+            scanBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
+            isScanning = true;
+
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#videoContainer'),
+                    constraints: {
+                        width: { min: 640, ideal: 1280 },
+                        height: { min: 480, ideal: 720 },
+                        facingMode: "environment",
+                        aspectRatio: { min: 1, max: 2 }
+                    },
+                    area: { // Focus area for scanning
+                        top: "20%",
+                        right: "10%",
+                        left: "10%",
+                        bottom: "20%"
+                    }
+                },
+                locator: {
+                    patchSize: "medium",
+                    halfSample: true
+                },
+                numOfWorkers: 4,
+                frequency: 10,
+                decoder: {
+                    readers: [
+                        "ean_reader",
+                        "ean_8_reader",
+                        "code_128_reader",
+                        "upc_reader",
+                        "upc_e_reader"
+                    ],
+                    multiple: false // Only decode one barcode at a time
+                },
+                locate: true
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    showError('Camera access denied or not available: ' + err.message);
+                    stopScanner();
+                    return;
+                }
+                console.log("Quagga initialized successfully");
+                Quagga.start();
+            });
+
+            Quagga.onDetected(onBarcodeDetected);
+        }
+
+        // Stop barcode scanner
+        function stopScanner() {
+            if (isScanning) {
+                Quagga.stop();
+                isScanning = false;
+            }
+            videoContainer.style.display = 'none';
+            scanBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+        }
+
+        // Handle barcode detection
+        function onBarcodeDetected(result) {
+            if (scanCooldown) return;
+
+            const code = result.codeResult.code;
+
+            // Validate barcode (must be numeric and reasonable length)
+            if (!code || !/^\d+$/.test(code) || code.length < 8 || code.length > 14) {
+                console.log("Invalid barcode detected:", code);
+                return;
+            }
+
+            // Avoid duplicate scans
+            if (code === lastScannedCode) return;
+
+            // Check detection quality - only accept high confidence scans
+            const errors = result.codeResult.decodedCodes
+                .filter(c => c.error !== undefined)
+                .map(c => c.error);
+
+            const avgError = errors.length > 0 ? errors.reduce((sum, err) => sum + err, 0) / errors.length : 0;
+
+            if (avgError > 0.1) {
+                console.log("Low confidence scan, avg error:", avgError);
+                return;
+            }
+
+            console.log("Valid barcode detected:", code, "with confidence:", (1 - avgError).toFixed(2));
+
+            lastScannedCode = code;
+            scanCooldown = true;
+
+            // Stop camera immediately after successful scan
+            stopScanner();
+
+            // Show success message
+            showSuccess();
+
+            barcodeInput.value = code;
+            searchProduct(code);
+
+            // Reset cooldown after 3 seconds
+            setTimeout(() => {
+                scanCooldown = false;
+                lastScannedCode = null;
+            }, 3000);
+        }
+
+        // Search for product
+        async function searchProduct(barcode) {
+            hideError();
+            hideProduct();
+            showLoading();
+
+            try {
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ barcode: barcode })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Product not found');
+                }
+
+                displayProduct(data);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Display product information
+        function displayProduct(data) {
+            // Product name and brand
+            document.getElementById('productName').textContent = data.name;
+            document.getElementById('productBrand').textContent = data.brand;
+
+            // Product image
+            const productImage = document.getElementById('productImage');
+            if (data.image) {
+                productImage.src = data.image;
+                productImage.style.display = 'block';
+            } else {
+                productImage.style.display = 'none';
+            }
+
+            // Scores
+            const scoresContainer = document.getElementById('scores');
+            scoresContainer.innerHTML = '';
+
+            if (data.nutriscore) {
+                const nutriLabel = data.nutriscore_ai ? 'Nutri-Score (AI)' : 'Nutri-Score';
+                scoresContainer.innerHTML += createScoreBadge(nutriLabel, data.nutriscore);
+            }
+
+            if (data.ecoscore) {
+                const ecoLabel = data.ecoscore_ai ? 'Eco-Score (AI)' : 'Eco-Score';
+                scoresContainer.innerHTML += createScoreBadge(ecoLabel, data.ecoscore);
+            }
+
+            // Display AI summaries if available
+            const aiSummaries = document.getElementById('aiSummaries');
+            const nutriscoreSummary = document.getElementById('nutriscoreSummary');
+            const ecoscoreSummary = document.getElementById('ecoscoreSummary');
+
+            if (data.nutriscore_summary || data.ecoscore_summary) {
+                aiSummaries.style.display = 'block';
+
+                if (data.nutriscore_summary) {
+                    nutriscoreSummary.style.display = 'block';
+                    document.getElementById('nutriscoreSummaryContent').textContent = data.nutriscore_summary;
+                } else {
+                    nutriscoreSummary.style.display = 'none';
+                }
+
+                if (data.ecoscore_summary) {
+                    ecoscoreSummary.style.display = 'block';
+                    document.getElementById('ecoscoreSummaryContent').textContent = data.ecoscore_summary;
+                } else {
+                    ecoscoreSummary.style.display = 'none';
+                }
+            } else {
+                aiSummaries.style.display = 'none';
+            }
+
+            // Nutrition table
+            const nutritionTable = document.getElementById('nutritionTable');
+            nutritionTable.innerHTML = '';
+
+            const nutrients = [
+                { name: 'Energy', value: data.nutriments.energy, unit: 'kcal' },
+                { name: 'Fat', value: data.nutriments.fat, unit: 'g' },
+                { name: 'Carbohydrates', value: data.nutriments.carbohydrates, unit: 'g' },
+                { name: 'Proteins', value: data.nutriments.proteins, unit: 'g' },
+                { name: 'Salt', value: data.nutriments.salt, unit: 'g' },
+                { name: 'Fiber', value: data.nutriments.fiber, unit: 'g' }
+            ];
+
+            nutrients.forEach(nutrient => {
+                const value = nutrient.value !== 'N/A' ?
+                    `${nutrient.value} ${nutrient.unit}` : 'N/A';
+                nutritionTable.innerHTML += `
+                    <tr>
+                        <td><strong>${nutrient.name}</strong></td>
+                        <td>${value}</td>
+                    </tr>
+                `;
+            });
+
+            // Ingredients
+            document.getElementById('ingredients').textContent = data.ingredients || 'Not available';
+
+            // Labels
+            const labelsContainer = document.getElementById('labels');
+            if (data.labels) {
+                const labelsList = data.labels.split(',').map(label => label.trim()).filter(label => label);
+                if (labelsList.length > 0) {
+                    labelsContainer.innerHTML = '<div class="labels">' +
+                        labelsList.map(label => `<span class="label-tag">${label}</span>`).join('') +
+                        '</div>';
+                } else {
+                    labelsContainer.textContent = 'No labels specified';
+                }
+            } else {
+                labelsContainer.textContent = 'No labels specified';
+            }
+
+            // Allergens
+            document.getElementById('allergens').textContent = data.allergens || 'None specified';
+
+            // Sustainability Metrics
+            if (data.sustainability_metrics) {
+                const metrics = data.sustainability_metrics;
+                const metricsContent = document.getElementById('sustainabilityMetricsContent');
+                const metricsSection = document.getElementById('sustainabilityMetricsSection');
+                const overallScore = data.overall_sustainability_score || 0;
+
+                let metricsHTML = `
+                    <div class="overall-score-container">
+                        <h3 class="overall-score-title">Overall Sustainability Score</h3>
+                        <div class="overall-score-pie" style="--score: ${overallScore}" id="overallScorePie">
+                            <div class="overall-score-text">
+                                <div class="overall-score-value" id="overallScoreValue">0</div>
+                                <div class="overall-score-max">/10</div>
+                            </div>
+                        </div>
+                        <p class="overall-score-description">
+                            Based on 8 core sustainability metrics including environmental impact, labor practices, and animal welfare
+                        </p>
+                    </div>
+                `;
+
+                const metricsList = [
+                    { key: 'greenhouse_gas', icon: '🌫️', name: 'Greenhouse Gas Emissions' },
+                    { key: 'processing', icon: '⚡', name: 'Processing Energy' },
+                    { key: 'water_usage', icon: '💧', name: 'Blue Water Usage' },
+                    { key: 'land_use', icon: '🌾', name: 'Land Occupation' },
+                    { key: 'soil_health', icon: '🌱', name: 'Soil Health' },
+                    { key: 'labor_risk', icon: '👥', name: 'Labor Risk' },
+                    { key: 'animal_welfare', icon: '🐄', name: 'Animal Welfare' },
+                    { key: 'biodiversity', icon: '🦋', name: 'Biodiversity' }
+                ];
+
+                metricsList.forEach(metric => {
+                    if (metrics[metric.key]) {
+                        const score = metrics[metric.key].score;
+                        const explanation = metrics[metric.key].explanation;
+                        const percentage = score * 10; // Convert 0-10 score to 0-100 percentage
+
+                        metricsHTML += `
+                            <div class="metric-item">
+                                <div class="pie-chart" style="--percentage: ${percentage}">
+                                    <div class="pie-chart-label">${score}/10</div>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-header">
+                                        <span class="metric-name">${metric.icon} ${metric.name}</span>
+                                        <span class="metric-score">${score}/10</span>
+                                    </div>
+                                    <div class="metric-bar">
+                                        <div class="metric-fill" style="width: ${percentage}%"></div>
+                                    </div>
+                                    <p class="metric-explanation">${explanation}</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                metricsContent.innerHTML = metricsHTML;
+                metricsSection.style.display = 'block';
+
+                // Animate overall score pie chart and counter
+                setTimeout(() => {
+                    const pie = document.getElementById('overallScorePie');
+                    const scoreValue = document.getElementById('overallScoreValue');
+
+                    // Animate pie chart
+                    pie.classList.add('animated');
+
+                    // Animate number counter
+                    let currentScore = 0;
+                    const targetScore = overallScore;
+                    const duration = 1000; // 1 second
+                    const increment = targetScore / (duration / 16); // 60fps
+
+                    const timer = setInterval(() => {
+                        currentScore += increment;
+                        if (currentScore >= targetScore) {
+                            currentScore = targetScore;
+                            clearInterval(timer);
+                        }
+                        scoreValue.textContent = currentScore.toFixed(1);
+                    }, 16);
+                }, 100);
+
+                // Add waste reduction tips after metrics
+                if (data.waste_reduction_tips && data.waste_reduction_tips.length > 0) {
+                    const wasteTipsHTML = `
+                        <div class="waste-tips-container">
+                            <h4 class="waste-tips-title">♻️ Waste Reduction Tips</h4>
+                            <ul class="waste-tips-list">
+                                ${data.waste_reduction_tips.map(tip => `
+                                    <li class="waste-tip-item">
+                                        <span class="waste-tip-icon">${tip.icon}</span>
+                                        <div class="waste-tip-content">
+                                            <p class="waste-tip-text"><strong>${tip.title}:</strong> ${tip.description}</p>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                    metricsContent.innerHTML += wasteTipsHTML;
+                }
+            } else {
+                document.getElementById('sustainabilityMetricsSection').style.display = 'none';
+            }
+
+            // Show new scan button and product card
+            newScanBtn.style.display = 'inline-block';
+            productCard.style.display = 'block';
+        }
+
+        // Create score badge HTML
+        function createScoreBadge(label, score) {
+            const scoreClass = score ? `score-${score.toLowerCase()}` : 'score-unknown';
+            const scoreValue = score || '?';
+
+            return `
+                <div class="score-badge ${scoreClass}">
+                    <div class="score-label">${label}</div>
+                    <div class="score-value">${scoreValue}</div>
+                </div>
+            `;
+        }
+
+        // Toggle collapsible sections
+        function toggleSection(sectionId) {
+            const content = document.getElementById(sectionId);
+            const icon = content.previousElementSibling.querySelector('.toggle-icon');
+
+            content.classList.toggle('collapsed');
+            icon.classList.toggle('open');
+        }
+
+        // UI helper functions
+        function showLoading() {
+            loading.style.display = 'block';
+        }
+
+        function hideLoading() {
+            loading.style.display = 'none';
+        }
+
+        function showSuccess() {
+            successMessage.style.display = 'block';
+            // Auto-hide success message after 3 seconds
+            setTimeout(() => {
+                hideSuccess();
+            }, 3000);
+        }
+
+        function hideSuccess() {
+            successMessage.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        function hideProduct() {
+            productCard.style.display = 'none';
+            newScanBtn.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
