@@ -784,6 +784,132 @@
             font-size: 0.9em;
         }
 
+        /* Community Impact Styles */
+        .community-impact-container {
+            background: #f5f9ff;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 25px;
+            border-left: 4px solid #3498db;
+        }
+
+        .community-impact-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .community-impact-intro {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .impact-actions-grid {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .impact-action-item {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 3px solid #3498db;
+        }
+
+        .impact-score-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            flex-shrink: 0;
+            background: conic-gradient(
+                var(--color) 0deg,
+                var(--color) calc(var(--percentage) * 3.6deg),
+                #e0e0e0 calc(var(--percentage) * 3.6deg),
+                #e0e0e0 360deg
+            );
+            position: relative;
+        }
+
+        .impact-score-circle::before {
+            content: '';
+            position: absolute;
+            width: 46px;
+            height: 46px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .impact-score-number {
+            position: relative;
+            z-index: 1;
+        }
+
+        .impact-action-content {
+            flex: 1;
+        }
+
+        .impact-category {
+            font-weight: 600;
+            color: #3498db;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .impact-action-text {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+
+        .impact-benefit {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .combined-score-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+        }
+
+        .combined-score-title {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .combined-score-display {
+            font-size: 3.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .combined-score-breakdown {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
         /* Certification Badges */
         .cert-badges {
             display: inline-flex;
@@ -1376,6 +1502,51 @@
                         scoreValue.textContent = currentScore.toFixed(1);
                     }, 16);
                 }, 100);
+
+                // Add community impact actions section
+                if (data.community_impact_actions && data.community_impact_actions.length > 0) {
+                    const communityImpactHTML = `
+                        <div class="community-impact-container">
+                            <h4 class="community-impact-title">
+                                <span>🌍</span>
+                                <span>Community Impact & Sustainability Actions</span>
+                            </h4>
+                            <p class="community-impact-intro">
+                                Based on this product's sustainability profile, here are innovative ways you can promote sustainability and create positive community impact:
+                            </p>
+                            <div class="impact-actions-grid">
+                                ${data.community_impact_actions.map(action => {
+                                    const score = action.impact_score || 0;
+                                    const percentage = score * 10;
+                                    const color = getScoreColor(score);
+                                    return `
+                                        <div class="impact-action-item">
+                                            <div class="impact-score-circle" style="--percentage: ${percentage}; --color: ${color}">
+                                                <span class="impact-score-number" style="color: ${color};">${score}/10</span>
+                                            </div>
+                                            <div class="impact-action-content">
+                                                <div class="impact-category">${action.category}</div>
+                                                <div class="impact-action-text">${action.action}</div>
+                                                <div class="impact-benefit">${action.benefit}</div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                            ${data.combined_overall_score !== undefined ? `
+                                <div class="combined-score-section">
+                                    <div class="combined-score-title">Combined Overall Score</div>
+                                    <div class="combined-score-display">${data.combined_overall_score}/100</div>
+                                    <div class="combined-score-breakdown">
+                                        Product Sustainability: ${data.overall_sustainability_score}/100 +
+                                        Community Impact: ${data.community_impact_score}/100
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    metricsContent.innerHTML += communityImpactHTML;
+                }
 
                 // Add waste reduction tips after metrics
                 if (data.waste_reduction_tips && data.waste_reduction_tips.length > 0) {

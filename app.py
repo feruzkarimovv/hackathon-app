@@ -134,6 +134,91 @@ Keep each description very concise (one sentence, max 12 words) and actionable."
         return None
 
 
+def generate_community_impact_actions(product_info, sustainability_score):
+    """
+    Generate practical community impact and sustainability actions
+    """
+    # Get packaging and categories info
+    packaging = product_info.get('packaging', '').lower()
+    categories = product_info.get('categories', '').lower()
+
+    # Define realistic, actionable sustainability practices
+    actions = []
+
+    # Action 1: Recycling (based on packaging)
+    if 'plastic' in packaging or 'bottle' in packaging:
+        actions.append({
+            "category": "Recycling",
+            "action": "Properly recycle packaging after use",
+            "impact_score": 8,
+            "benefit": "Reduces landfill waste and plastic pollution"
+        })
+    elif 'cardboard' in packaging or 'paper' in packaging or 'box' in packaging:
+        actions.append({
+            "category": "Recycling",
+            "action": "Flatten and recycle cardboard packaging",
+            "impact_score": 7,
+            "benefit": "Saves trees and reduces manufacturing emissions"
+        })
+    else:
+        actions.append({
+            "category": "Recycling",
+            "action": "Check local recycling guidelines for this packaging",
+            "impact_score": 7,
+            "benefit": "Ensures proper waste management"
+        })
+
+    # Action 2: Buy Local/Seasonal
+    actions.append({
+        "category": "Local Sourcing",
+        "action": "Choose locally-produced alternatives when available",
+        "impact_score": 9,
+        "benefit": "Cuts transportation emissions by up to 50%"
+    })
+
+    # Action 3: Reduce Food Waste
+    if 'food' in categories or 'beverage' in categories:
+        actions.append({
+            "category": "Food Waste",
+            "action": "Plan meals to use entire product before expiration",
+            "impact_score": 8,
+            "benefit": "Prevents methane emissions from landfills"
+        })
+    else:
+        actions.append({
+            "category": "Waste Reduction",
+            "action": "Buy only what you need to minimize waste",
+            "impact_score": 7,
+            "benefit": "Reduces overall consumption impact"
+        })
+
+    # Action 4: Reusable alternatives
+    actions.append({
+        "category": "Reuse",
+        "action": "Bring reusable bags and containers to store",
+        "impact_score": 8,
+        "benefit": "Eliminates single-use plastic waste"
+    })
+
+    # Action 5: Community action (based on score)
+    if sustainability_score >= 70:
+        actions.append({
+            "category": "Community Impact",
+            "action": "Share sustainable product finds with friends",
+            "impact_score": 6,
+            "benefit": "Multiplies positive environmental choices"
+        })
+    else:
+        actions.append({
+            "category": "Community Impact",
+            "action": "Support brands improving sustainability practices",
+            "impact_score": 7,
+            "benefit": "Drives industry-wide positive change"
+        })
+
+    return actions
+
+
 def generate_product_alternatives(product_info):
     """
     Generate healthier and more sustainable product alternatives
@@ -580,6 +665,20 @@ def scan_barcode():
             # Average of all 8 metrics (each 0-10), then multiply by 10 to get score out of 100
             overall_score = round((sum(scores) / len(scores)) * 10, 1) if scores else 0
             product_info['overall_sustainability_score'] = overall_score
+
+            # Generate community impact actions
+            community_actions = generate_community_impact_actions(product_info, overall_score)
+            if community_actions:
+                product_info['community_impact_actions'] = community_actions
+
+                # Calculate community impact score (average of all action impact scores)
+                impact_scores = [action.get('impact_score', 0) for action in community_actions]
+                community_impact_score = round((sum(impact_scores) / len(impact_scores)) * 10, 1) if impact_scores else 0
+                product_info['community_impact_score'] = community_impact_score
+
+                # Calculate combined overall score (average of sustainability score and community impact score)
+                combined_score = round((overall_score + community_impact_score) / 2, 1)
+                product_info['combined_overall_score'] = combined_score
 
         # Generate waste reduction tips
         waste_tips = generate_waste_reduction_tips(product_info)
