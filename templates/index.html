@@ -153,6 +153,9 @@
             border-radius: 10px;
             overflow: hidden;
             background: #000;
+            min-height: 0;
+            height: auto;
+            background: transparent;
         }
 
         #videoContainer video,
@@ -517,6 +520,147 @@
             font-weight: bold;
             color: #CC0033;
             font-size: 0.9em;
+        }
+
+        /* Overall Score Pie Chart */
+        .overall-score-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .overall-score-pie {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: conic-gradient(
+                #CC0033 0deg,
+                #CC0033 0deg,
+                #e0e0e0 0deg,
+                #e0e0e0 360deg
+            );
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            transition: all 1s ease-out;
+        }
+
+        .overall-score-pie.animated {
+            background: conic-gradient(
+                #CC0033 0deg,
+                #CC0033 calc(var(--score) * 36deg),
+                #e0e0e0 calc(var(--score) * 36deg),
+                #e0e0e0 360deg
+            );
+        }
+
+        .overall-score-pie::before {
+            content: '';
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .overall-score-text {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .overall-score-value {
+            font-size: 3.5em;
+            font-weight: bold;
+            color: #CC0033;
+            line-height: 1;
+        }
+
+        .overall-score-max {
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .overall-score-title {
+            font-family: 'Noto Serif', 'ITC Giovanni', Georgia, serif;
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .overall-score-description {
+            color: #666;
+            font-size: 1em;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        @keyframes scoreAnimation {
+            from {
+                --score: 0;
+            }
+        }
+
+        /* Waste Reduction Tips Styles */
+        .waste-tips-container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid #CC0033;
+        }
+
+        .waste-tips-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .waste-tips-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .waste-tip-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .waste-tip-item:last-child {
+            border-bottom: none;
+        }
+
+        .waste-tip-icon {
+            font-size: 1.3em;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .waste-tip-content {
+            flex: 1;
+        }
+
+        .waste-tip-text {
+            color: #555;
+            line-height: 1.5;
+            font-size: 0.9em;
+        }
+
+        .waste-tip-text strong {
+            color: #2c3e50;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -940,8 +1084,22 @@
                 const metrics = data.sustainability_metrics;
                 const metricsContent = document.getElementById('sustainabilityMetricsContent');
                 const metricsSection = document.getElementById('sustainabilityMetricsSection');
+                const overallScore = data.overall_sustainability_score || 0;
 
-                let metricsHTML = '';
+                let metricsHTML = `
+                    <div class="overall-score-container">
+                        <h3 class="overall-score-title">Overall Sustainability Score</h3>
+                        <div class="overall-score-pie" style="--score: ${overallScore}" id="overallScorePie">
+                            <div class="overall-score-text">
+                                <div class="overall-score-value" id="overallScoreValue">0</div>
+                                <div class="overall-score-max">/10</div>
+                            </div>
+                        </div>
+                        <p class="overall-score-description">
+                            Based on 8 core sustainability metrics including environmental impact, labor practices, and animal welfare
+                        </p>
+                    </div>
+                `;
 
                 const metricsList = [
                     { key: 'greenhouse_gas', icon: '🌫️', name: 'Greenhouse Gas Emissions' },
@@ -982,6 +1140,50 @@
 
                 metricsContent.innerHTML = metricsHTML;
                 metricsSection.style.display = 'block';
+
+                // Animate overall score pie chart and counter
+                setTimeout(() => {
+                    const pie = document.getElementById('overallScorePie');
+                    const scoreValue = document.getElementById('overallScoreValue');
+
+                    // Animate pie chart
+                    pie.classList.add('animated');
+
+                    // Animate number counter
+                    let currentScore = 0;
+                    const targetScore = overallScore;
+                    const duration = 1000; // 1 second
+                    const increment = targetScore / (duration / 16); // 60fps
+
+                    const timer = setInterval(() => {
+                        currentScore += increment;
+                        if (currentScore >= targetScore) {
+                            currentScore = targetScore;
+                            clearInterval(timer);
+                        }
+                        scoreValue.textContent = currentScore.toFixed(1);
+                    }, 16);
+                }, 100);
+
+                // Add waste reduction tips after metrics
+                if (data.waste_reduction_tips && data.waste_reduction_tips.length > 0) {
+                    const wasteTipsHTML = `
+                        <div class="waste-tips-container">
+                            <h4 class="waste-tips-title">♻️ Waste Reduction Tips</h4>
+                            <ul class="waste-tips-list">
+                                ${data.waste_reduction_tips.map(tip => `
+                                    <li class="waste-tip-item">
+                                        <span class="waste-tip-icon">${tip.icon}</span>
+                                        <div class="waste-tip-content">
+                                            <p class="waste-tip-text"><strong>${tip.title}:</strong> ${tip.description}</p>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                    metricsContent.innerHTML += wasteTipsHTML;
+                }
             } else {
                 document.getElementById('sustainabilityMetricsSection').style.display = 'none';
             }

@@ -65,6 +65,65 @@ Explain what this grade means and why it matters. Be concise and helpful."""
         return f"{score_type}: {grade}"
 
 
+def generate_waste_reduction_tips(product_info):
+    """
+    Generate personalized waste reduction and recycling tips based on product
+    """
+    if not client:
+        return None
+
+    try:
+        prompt = f"""Based on this product, provide practical waste reduction and recycling tips for consumers.
+
+Product Information:
+- Name: {product_info.get('name', 'Unknown')}
+- Brand: {product_info.get('brand', 'Unknown')}
+- Categories: {product_info.get('categories', 'Unknown')}
+- Packaging: {product_info.get('packaging', 'Unknown')}
+- Labels: {product_info.get('labels', 'None')}
+
+Provide 3-4 specific, actionable tips. Focus on the most relevant ones for this product.
+
+Respond in JSON format with an array of tips:
+{{
+  "tips": [
+    {{"icon": "♻️", "title": "Recycle", "description": "brief instruction"}},
+    {{"icon": "🔄", "title": "Reuse", "description": "brief idea"}},
+    {{"icon": "🛒", "title": "Buy Better", "description": "brief alternative"}}
+  ]
+}}
+
+Keep each description very concise (one sentence, max 12 words) and actionable."""
+
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
+            temperature=0.6,
+            max_tokens=800,
+        )
+
+        response_text = chat_completion.choices[0].message.content
+
+        # Extract JSON from response
+        if '```json' in response_text:
+            json_start = response_text.find('```json') + 7
+            json_end = response_text.find('```', json_start)
+            response_text = response_text[json_start:json_end].strip()
+        elif '```' in response_text:
+            json_start = response_text.find('```') + 3
+            json_end = response_text.find('```', json_start)
+            response_text = response_text[json_start:json_end].strip()
+
+        tips_data = json.loads(response_text)
+        return tips_data.get('tips', [])
+
+    except Exception as e:
+        print(f"Waste reduction tips error: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return None
+
+
 def generate_sustainability_metrics(product_info):
     """
     Generate HowGood-style sustainability metrics analysis for the product
@@ -228,6 +287,25 @@ def scan_barcode():
         sustainability_metrics = generate_sustainability_metrics(product_info)
         if sustainability_metrics:
             product_info['sustainability_metrics'] = sustainability_metrics
+
+            # Calculate overall sustainability score (average of all 8 metrics)
+            scores = [
+                sustainability_metrics.get('greenhouse_gas', {}).get('score', 0),
+                sustainability_metrics.get('processing', {}).get('score', 0),
+                sustainability_metrics.get('water_usage', {}).get('score', 0),
+                sustainability_metrics.get('land_use', {}).get('score', 0),
+                sustainability_metrics.get('soil_health', {}).get('score', 0),
+                sustainability_metrics.get('labor_risk', {}).get('score', 0),
+                sustainability_metrics.get('animal_welfare', {}).get('score', 0),
+                sustainability_metrics.get('biodiversity', {}).get('score', 0)
+            ]
+            overall_score = round(sum(scores) / len(scores), 1) if scores else 0
+            product_info['overall_sustainability_score'] = overall_score
+
+        # Generate waste reduction tips
+        waste_tips = generate_waste_reduction_tips(product_info)
+        if waste_tips:
+            product_info['waste_reduction_tips'] = waste_tips
 
         return jsonify(product_info), 200
 
