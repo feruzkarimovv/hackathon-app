@@ -554,8 +554,8 @@
         .overall-score-pie.animated {
             background: conic-gradient(
                 var(--color, #999) 0deg,
-                var(--color, #999) calc(var(--score) * 36deg),
-                #e0e0e0 calc(var(--score) * 36deg),
+                var(--color, #999) calc(var(--score) * 3.6deg),
+                #e0e0e0 calc(var(--score) * 3.6deg),
                 #e0e0e0 360deg
             );
         }
@@ -1295,7 +1295,7 @@
                 const metricsContent = document.getElementById('sustainabilityMetricsContent');
                 const metricsSection = document.getElementById('sustainabilityMetricsSection');
                 const overallScore = data.overall_sustainability_score || 0;
-                const overallColor = getScoreColor(overallScore);
+                const overallColor = getScoreColorFor100(overallScore);
 
                 let metricsHTML = `
                     <div class="overall-score-container">
@@ -1303,11 +1303,11 @@
                         <div class="overall-score-pie" style="--score: ${overallScore}; --color: ${overallColor}" id="overallScorePie">
                             <div class="overall-score-text">
                                 <div class="overall-score-value" id="overallScoreValue" style="color: ${overallColor};">0</div>
-                                <div class="overall-score-max">/10</div>
+                                <div class="overall-score-max">/100</div>
                             </div>
                         </div>
                         <p class="overall-score-description">
-                            Based on 8 core sustainability metrics including environmental impact, labor practices, and animal welfare
+                            Based on 8 equally-weighted sustainability metrics using HowGood methodology
                         </p>
                     </div>
                 `;
@@ -1324,7 +1324,7 @@
                 ];
 
                 metricsList.forEach(metric => {
-                    if (metrics[metric.key]) {
+                    if (metrics[metric.key] && metrics[metric.key].score !== undefined) {
                         const score = metrics[metric.key].score;
                         const explanation = metrics[metric.key].explanation;
                         const percentage = score * 10; // Convert 0-10 score to 0-100 percentage
@@ -1453,6 +1453,27 @@
                 return '#9ccc65';
             } else if (score >= 9 && score <= 10) {
                 // Green
+                return '#4caf50';
+            }
+            return '#999'; // Default gray for invalid scores
+        }
+
+        // Get color based on score (0-100)
+        function getScoreColorFor100(score) {
+            if (score >= 10 && score < 30) {
+                // Red (10-29)
+                return '#d32f2f';
+            } else if (score >= 30 && score < 50) {
+                // Between red and orange (30-49)
+                return '#f57c00';
+            } else if (score >= 50 && score < 70) {
+                // Orange (medium) (50-69)
+                return '#ff9800';
+            } else if (score >= 70 && score < 90) {
+                // Between orange and green (70-89)
+                return '#9ccc65';
+            } else if (score >= 90 && score <= 100) {
+                // Green (90-100)
                 return '#4caf50';
             }
             return '#999'; // Default gray for invalid scores

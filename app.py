@@ -565,7 +565,8 @@ def scan_barcode():
         if sustainability_metrics:
             product_info['sustainability_metrics'] = sustainability_metrics
 
-            # Calculate overall sustainability score (average of all 8 metrics)
+            # Calculate overall sustainability score using HowGood methodology
+            # All 8 metrics are weighted equally, score out of 100
             scores = [
                 sustainability_metrics.get('greenhouse_gas', {}).get('score', 0),
                 sustainability_metrics.get('processing', {}).get('score', 0),
@@ -576,7 +577,8 @@ def scan_barcode():
                 sustainability_metrics.get('animal_welfare', {}).get('score', 0),
                 sustainability_metrics.get('biodiversity', {}).get('score', 0)
             ]
-            overall_score = round(sum(scores) / len(scores), 1) if scores else 0
+            # Average of all 8 metrics (each 0-10), then multiply by 10 to get score out of 100
+            overall_score = round((sum(scores) / len(scores)) * 10, 1) if scores else 0
             product_info['overall_sustainability_score'] = overall_score
 
         # Generate waste reduction tips
