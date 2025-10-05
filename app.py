@@ -292,10 +292,133 @@ Respond in JSON format:
 
 
 
+def geocode_zipcode(zipcode):
+    """Convert zip code to coordinates using Nominatim (OpenStreetMap)"""
+    try:
+        url = f"https://nominatim.openstreetmap.org/search?postalcode={zipcode}&country=US&format=json"
+        headers = {'User-Agent': 'ScarletScanner/1.0'}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        if data and len(data) > 0:
+            return {
+                'lat': float(data[0]['lat']),
+                'lon': float(data[0]['lon'])
+            }
+        return None
+    except Exception as e:
+        print(f"Geocoding error: {e}")
+        return None
+
+
+def search_farmers_markets(lat, lon, radius_miles=25):
+    """Search for farmers markets using USDA API (if available) or via Overpass API"""
+    try:
+        # Use Overpass API (OpenStreetMap) to find farmers markets
+        radius_meters = radius_miles * 1609.34  # Convert miles to meters
+
+        overpass_url = "https://overpass-api.de/api/interpreter"
+        query = f"""
+        [out:json];
+        (
+          node["shop"="farm"](around:{radius_meters},{lat},{lon});
+          node["amenity"="marketplace"](around:{radius_meters},{lat},{lon});
+          node["shop"="organic"](around:{radius_meters},{lat},{lon});
+        );
+        out body;
+        """
+
+        response = requests.post(overpass_url, data={'data': query}, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+
+        markets = []
+        for element in data.get('elements', []):
+            tags = element.get('tags', {})
+            market_lat = element.get('lat')
+            market_lon = element.get('lon')
+
+            # Calculate distance
+            from math import radians, sin, cos, sqrt, atan2
+            R = 3959  # Earth radius in miles
+
+            lat1, lon1 = radians(lat), radians(lon)
+            lat2, lon2 = radians(market_lat), radians(market_lon)
+
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
+            a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+            c = 2 * atan2(sqrt(a), sqrt(1-a))
+            distance = R * c
+
+            markets.append({
+                'name': tags.get('name', 'Local Market'),
+                'type': tags.get('shop', tags.get('amenity', 'market')),
+                'address': tags.get('addr:street', 'Address not available'),
+                'city': tags.get('addr:city', ''),
+                'distance': round(distance, 1),
+                'lat': market_lat,
+                'lon': market_lon
+            })
+
+        # Sort by distance
+        markets.sort(key=lambda x: x['distance'])
+        return markets[:10]  # Return top 10 closest
+
+    except Exception as e:
+        print(f"Farmers market search error: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return []
+
+
 @app.route('/')
 def index():
     """Serve the main application page"""
     return render_template('index.html')
+
+
+@app.route('/find-markets', methods=['POST'])
+def find_markets():
+    """Find local sustainable markets based on zip code"""
+    try:
+        data = request.get_json()
+        zipcode = data.get('zipcode', '').strip()
+
+        if not zipcode or len(zipcode) != 5 or not zipcode.isdigit():
+            return jsonify({
+                'success': False,
+                'error': 'Please enter a valid 5-digit ZIP code'
+            }), 400
+
+        # Geocode zip code
+        coords = geocode_zipcode(zipcode)
+        if not coords:
+            return jsonify({
+                'success': False,
+                'error': 'Could not find location for this ZIP code'
+            }), 404
+
+        # Search for markets
+        markets = search_farmers_markets(coords['lat'], coords['lon'])
+
+        return jsonify({
+            'success': True,
+            'zipcode': zipcode,
+            'location': coords,
+            'markets': markets,
+            'count': len(markets)
+        }), 200
+
+    except Exception as e:
+        print(f"Error in find_markets: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': 'An error occurred while searching for markets'
+        }), 500
 
 
 @app.route('/scan', methods=['POST'])
@@ -344,6 +467,63 @@ def scan_barcode():
             except (ValueError, TypeError):
                 return 'N/A'
 
+        # Analyze ingredients to detect certifications
+        ingredients_str = product.get('ingredients_text', '').lower()
+        categories_str = product.get('categories', '').lower()
+
+        # Non-vegan ingredients
+        non_vegan_ingredients = [
+            'milk', 'cream', 'butter', 'cheese', 'whey', 'lactose', 'casein', 'yogurt', 'dairy',
+            'egg', 'honey', 'gelatin', 'gelatine', 'meat', 'chicken', 'beef', 'pork', 'fish',
+            'salmon', 'tuna', 'shrimp', 'shellfish', 'lard', 'tallow', 'suet', 'albumin',
+            'anchovies', 'caviar', 'rennet', 'isinglass', 'cochineal', 'carmine', 'shellac'
+        ]
+
+        # Non-halal ingredients
+        non_halal_ingredients = [
+            'pork', 'bacon', 'ham', 'lard', 'gelatin', 'gelatine', 'alcohol', 'wine', 'beer',
+            'rum', 'vodka', 'whiskey', 'ethanol', 'liqueur', 'sake', 'marsala'
+        ]
+
+        # Non-kosher ingredients
+        non_kosher_ingredients = [
+            'pork', 'bacon', 'ham', 'lard', 'shellfish', 'shrimp', 'lobster', 'crab', 'oyster',
+            'clam', 'squid', 'octopus', 'scallop'
+        ]
+
+        certifications = {
+            'vegan': True,
+            'halal': True,
+            'kosher': True
+        }
+
+        # Check if vegan (no animal products)
+        for ingredient in non_vegan_ingredients:
+            if ingredient in ingredients_str:
+                certifications['vegan'] = False
+                break
+
+        # Check if halal (no pork, alcohol, or non-halal gelatin)
+        for ingredient in non_halal_ingredients:
+            if ingredient in ingredients_str:
+                certifications['halal'] = False
+                break
+
+        # Check if kosher (no pork, shellfish, or mixing dairy and meat)
+        for ingredient in non_kosher_ingredients:
+            if ingredient in ingredients_str:
+                certifications['kosher'] = False
+                break
+
+        # If vegan is false, halal and kosher depend on ingredients
+        # If there are no ingredients available, default to False for all
+        if not ingredients_str or ingredients_str == 'not available':
+            certifications = {
+                'vegan': False,
+                'halal': False,
+                'kosher': False
+            }
+
         # Extract product information
         product_info = {
             'success': True,
@@ -356,6 +536,7 @@ def scan_barcode():
             'labels': product.get('labels', ''),
             'packaging': product.get('packaging', 'Unknown'),
             'allergens': product.get('allergens', 'None specified'),
+            'certifications': certifications,
             'nutriments': {
                 'energy': round_nutrient(product.get('nutriments', {}).get('energy-kcal_100g')),
                 'fat': round_nutrient(product.get('nutriments', {}).get('fat_100g')),

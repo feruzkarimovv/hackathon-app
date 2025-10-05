@@ -741,6 +741,83 @@
             line-height: 1.4;
         }
 
+        /* Local Markets Styles */
+        .market-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #27ae60;
+            margin-bottom: 15px;
+            transition: transform 0.2s ease;
+        }
+
+        .market-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .market-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.15em;
+            margin-bottom: 8px;
+        }
+
+        .market-type {
+            display: inline-block;
+            background: #27ae60;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+        }
+
+        .market-address {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 8px;
+        }
+
+        .market-distance {
+            color: #CC0033;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        /* Certification Badges */
+        .cert-badges {
+            display: inline-flex;
+            gap: 8px;
+            margin-left: 10px;
+            flex-wrap: wrap;
+        }
+
+        .cert-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cert-vegan {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .cert-halal {
+            background: #3498db;
+            color: white;
+        }
+
+        .cert-kosher {
+            background: #9b59b6;
+            color: white;
+        }
+
         .waste-tip-text strong {
             color: #2c3e50;
             font-weight: 600;
@@ -771,6 +848,11 @@
                 <input type="text" id="barcodeInput" placeholder="Or enter barcode manually...">
                 <button id="searchBtn" class="btn-primary">🔎 Search</button>
             </div>
+
+            <div class="input-group" style="margin-top: 30px; border-top: 2px solid #e0e0e0; padding-top: 25px;">
+                <input type="text" id="zipCodeInput" placeholder="Enter ZIP code to find local sustainable markets..." maxlength="5" pattern="[0-9]{5}">
+                <button id="findMarketsBtn" class="btn-primary">🌱 Find Local Markets</button>
+            </div>
         </div>
 
         <div class="loading" id="loading">
@@ -780,6 +862,11 @@
 
         <div class="success-message" id="successMessage">✅ Barcode scanned successfully!</div>
         <div class="error-message" id="errorMessage"></div>
+
+        <div class="product-card" id="marketsCard" style="display: none;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; text-align: center;">🌱 Local Sustainable Markets</h2>
+            <div id="marketsResults"></div>
+        </div>
 
         <div class="product-card" id="productCard">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -873,10 +960,13 @@
         const videoContainer = document.getElementById('videoContainer');
         const barcodeInput = document.getElementById('barcodeInput');
         const searchBtn = document.getElementById('searchBtn');
+        const zipCodeInput = document.getElementById('zipCodeInput');
+        const findMarketsBtn = document.getElementById('findMarketsBtn');
         const loading = document.getElementById('loading');
         const successMessage = document.getElementById('successMessage');
         const errorMessage = document.getElementById('errorMessage');
         const productCard = document.getElementById('productCard');
+        const marketsCard = document.getElementById('marketsCard');
         const newScanBtn = document.getElementById('newScanBtn');
 
         let isScanning = false;
@@ -917,6 +1007,24 @@
             hideProduct();
             barcodeInput.value = '';
             startScanner();
+        });
+
+        // Find local markets
+        findMarketsBtn.addEventListener('click', () => {
+            const zipcode = zipCodeInput.value.trim();
+            if (zipcode) {
+                findLocalMarkets(zipcode);
+            }
+        });
+
+        // Enter key for zipcode
+        zipCodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const zipcode = zipCodeInput.value.trim();
+                if (zipcode) {
+                    findLocalMarkets(zipcode);
+                }
+            }
         });
 
         // Start barcode scanner
@@ -1065,8 +1173,28 @@
 
         // Display product information
         function displayProduct(data) {
-            // Product name and brand
-            document.getElementById('productName').textContent = data.name;
+            // Product name and brand with certification badges
+            const productNameEl = document.getElementById('productName');
+            productNameEl.innerHTML = data.name;
+
+            // Add certification badges if present
+            if (data.certifications) {
+                const badges = [];
+                if (data.certifications.vegan) {
+                    badges.push('<span class="cert-badge cert-vegan">Vegan</span>');
+                }
+                if (data.certifications.halal) {
+                    badges.push('<span class="cert-badge cert-halal">Halal</span>');
+                }
+                if (data.certifications.kosher) {
+                    badges.push('<span class="cert-badge cert-kosher">Kosher</span>');
+                }
+
+                if (badges.length > 0) {
+                    productNameEl.innerHTML += '<div class="cert-badges">' + badges.join('') + '</div>';
+                }
+            }
+
             document.getElementById('productBrand').textContent = data.brand;
 
             // Product image
@@ -1363,6 +1491,71 @@
         function hideProduct() {
             productCard.style.display = 'none';
             newScanBtn.style.display = 'none';
+        }
+
+        // Find local sustainable markets
+        async function findLocalMarkets(zipcode) {
+            try {
+                showLoading();
+                hideError();
+                hideProduct();
+                marketsCard.style.display = 'none';
+
+                const response = await fetch('/find-markets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ zipcode: zipcode })
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                if (!response.ok || !data.success) {
+                    showError(data.error || 'Failed to find local markets');
+                    return;
+                }
+
+                // Display markets
+                displayMarkets(data);
+
+            } catch (error) {
+                hideLoading();
+                showError('Network error. Please try again.');
+                console.error('Error finding markets:', error);
+            }
+        }
+
+        function displayMarkets(data) {
+            const marketsResults = document.getElementById('marketsResults');
+
+            if (!data.markets || data.markets.length === 0) {
+                marketsResults.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <p style="font-size: 1.1em; margin-bottom: 10px;">No sustainable markets found within 25 miles of ZIP code ${data.zipcode}</p>
+                        <p style="font-size: 0.9em;">Try searching a different area or check online for local farmers markets.</p>
+                    </div>
+                `;
+            } else {
+                marketsResults.innerHTML = `
+                    <p style="color: #666; margin-bottom: 20px; text-align: center;">
+                        Found ${data.count} sustainable market${data.count > 1 ? 's' : ''} near ${data.zipcode}
+                    </p>
+                    ${data.markets.map(market => `
+                        <div class="market-item">
+                            <div class="market-name">${market.name}</div>
+                            <span class="market-type">${market.type}</span>
+                            <div class="market-address">
+                                ${market.address}${market.city ? ', ' + market.city : ''}
+                            </div>
+                            <div class="market-distance">📍 ${market.distance} miles away</div>
+                        </div>
+                    `).join('')}
+                `;
+            }
+
+            marketsCard.style.display = 'block';
         }
     </script>
 </body>
