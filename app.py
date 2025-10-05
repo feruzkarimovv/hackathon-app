@@ -355,13 +355,43 @@ JSON with ALL 8 metrics & brief explanations (max 8 words each):
             response_text = response_text[json_start:json_end].strip()
 
         metrics = json.loads(response_text)
+
+        # Ensure all 8 required metrics are present
+        required_metrics = [
+            'greenhouse_gas', 'processing', 'water_usage', 'land_use',
+            'soil_health', 'labor_risk', 'animal_welfare', 'biodiversity'
+        ]
+
+        for metric_key in required_metrics:
+            if metric_key not in metrics or not isinstance(metrics[metric_key], dict):
+                metrics[metric_key] = {
+                    "score": 5,
+                    "explanation": "Data unavailable"
+                }
+            elif 'score' not in metrics[metric_key]:
+                metrics[metric_key]['score'] = 5
+            elif 'explanation' not in metrics[metric_key]:
+                metrics[metric_key]['explanation'] = "Assessment based on category"
+
         return metrics
 
     except Exception as e:
         print(f"Sustainability metrics error: {e}")
         import traceback
         print(traceback.format_exc())
-        return None
+
+        # Return default metrics instead of None to ensure UI always shows something
+        default_metrics = {}
+        required_metrics = [
+            'greenhouse_gas', 'processing', 'water_usage', 'land_use',
+            'soil_health', 'labor_risk', 'animal_welfare', 'biodiversity'
+        ]
+        for metric_key in required_metrics:
+            default_metrics[metric_key] = {
+                "score": 5,
+                "explanation": "Unable to analyze - default value"
+            }
+        return default_metrics
 
 
 

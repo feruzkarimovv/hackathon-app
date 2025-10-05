@@ -1723,6 +1723,14 @@
             // Show new scan button and product card
             newScanBtn.style.display = 'inline-block';
             productCard.style.display = 'block';
+
+            // Smooth scroll to product details
+            setTimeout(() => {
+                productCard.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }, 100);
         }
 
         // Get color based on score (0-10)
