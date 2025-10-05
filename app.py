@@ -381,6 +381,154 @@ Respond in JSON format:
 
 
 
+def check_health_warnings(product_info, nutriments, filters):
+    """
+    Check if product is suitable based on dietary restrictions and health conditions
+    Returns list of warnings
+    """
+    warnings = []
+    ingredients_str = product_info.get('ingredients', '').lower()
+
+    # Check dietary restrictions
+    if 'vegan' in filters.get('dietary', []):
+        if not product_info.get('certifications', {}).get('vegan', False):
+            warnings.append({
+                'title': 'Not Vegan',
+                'message': 'This product contains animal-derived ingredients and is not suitable for a vegan diet.',
+                'severity': 'high'
+            })
+
+    if 'vegetarian' in filters.get('dietary', []):
+        meat_ingredients = ['meat', 'chicken', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'bacon', 'ham', 'gelatin', 'gelatine']
+        for ingredient in meat_ingredients:
+            if ingredient in ingredients_str:
+                warnings.append({
+                    'title': 'Not Vegetarian',
+                    'message': 'This product contains meat or fish ingredients.',
+                    'severity': 'high'
+                })
+                break
+
+    if 'halal' in filters.get('dietary', []):
+        if not product_info.get('certifications', {}).get('halal', False):
+            warnings.append({
+                'title': 'May Not Be Halal',
+                'message': 'This product may contain non-halal ingredients (pork, alcohol, or non-halal gelatin).',
+                'severity': 'high'
+            })
+
+    if 'kosher' in filters.get('dietary', []):
+        if not product_info.get('certifications', {}).get('kosher', False):
+            warnings.append({
+                'title': 'May Not Be Kosher',
+                'message': 'This product may contain non-kosher ingredients (pork, shellfish, etc.).',
+                'severity': 'high'
+            })
+
+    if 'gluten_free' in filters.get('dietary', []):
+        gluten_ingredients = ['wheat', 'barley', 'rye', 'malt', 'gluten', 'flour', 'bread', 'pasta']
+        for ingredient in gluten_ingredients:
+            if ingredient in ingredients_str:
+                warnings.append({
+                    'title': 'Contains Gluten',
+                    'message': 'This product contains gluten and is not suitable for celiac disease or gluten sensitivity.',
+                    'severity': 'high'
+                })
+                break
+
+    if 'lactose_free' in filters.get('dietary', []):
+        dairy_ingredients = ['milk', 'lactose', 'dairy', 'cream', 'butter', 'cheese', 'whey', 'casein', 'yogurt']
+        for ingredient in dairy_ingredients:
+            if ingredient in ingredients_str:
+                warnings.append({
+                    'title': 'Contains Lactose',
+                    'message': 'This product contains dairy/lactose and is not suitable for lactose intolerance.',
+                    'severity': 'high'
+                })
+                break
+
+    # Check health conditions
+    if 'diabetes' in filters.get('health', []):
+        sugar = nutriments.get('sugars', 0)
+        if sugar != 'N/A' and float(sugar) > 10:
+            warnings.append({
+                'title': 'High Sugar Content',
+                'message': f'This product contains {sugar}g of sugar per 100g, which may not be suitable for diabetes management.',
+                'severity': 'high'
+            })
+        elif sugar != 'N/A' and float(sugar) > 5:
+            warnings.append({
+                'title': 'Moderate Sugar Content',
+                'message': f'This product contains {sugar}g of sugar per 100g. Monitor blood glucose levels carefully.',
+                'severity': 'medium'
+            })
+
+    if 'hypertension' in filters.get('health', []):
+        salt = nutriments.get('salt', 0)
+        sodium = nutriments.get('sodium', 0)
+        salt_value = salt if salt != 'N/A' else (float(sodium) * 2.5 / 1000 if sodium != 'N/A' else 0)
+        if salt_value != 'N/A' and float(salt_value) > 1.5:
+            warnings.append({
+                'title': 'High Sodium Content',
+                'message': f'This product contains {salt_value}g of salt per 100g, which may raise blood pressure.',
+                'severity': 'high'
+            })
+        elif salt_value != 'N/A' and float(salt_value) > 0.75:
+            warnings.append({
+                'title': 'Moderate Sodium Content',
+                'message': f'This product contains {salt_value}g of salt per 100g. Monitor sodium intake.',
+                'severity': 'medium'
+            })
+
+    if 'heart_disease' in filters.get('health', []):
+        saturated_fat = nutriments.get('saturated_fat', 0)
+        if saturated_fat != 'N/A' and float(saturated_fat) > 5:
+            warnings.append({
+                'title': 'High Saturated Fat',
+                'message': f'This product contains {saturated_fat}g of saturated fat per 100g, which may increase cholesterol levels.',
+                'severity': 'high'
+            })
+        elif saturated_fat != 'N/A' and float(saturated_fat) > 2.5:
+            warnings.append({
+                'title': 'Moderate Saturated Fat',
+                'message': f'This product contains {saturated_fat}g of saturated fat per 100g. Limit consumption.',
+                'severity': 'medium'
+            })
+
+    if 'celiac' in filters.get('health', []):
+        gluten_ingredients = ['wheat', 'barley', 'rye', 'malt', 'gluten', 'flour', 'bread', 'pasta', 'oats']
+        for ingredient in gluten_ingredients:
+            if ingredient in ingredients_str:
+                warnings.append({
+                    'title': 'Contains Gluten - Unsafe for Celiac Disease',
+                    'message': 'This product contains gluten and can cause serious health issues for those with celiac disease.',
+                    'severity': 'high'
+                })
+                break
+
+    if 'kidney_disease' in filters.get('health', []):
+        protein = nutriments.get('proteins', 0)
+        phosphorus_ingredients = ['cheese', 'milk', 'dairy', 'cola', 'nuts', 'beans', 'lentils']
+
+        if protein != 'N/A' and float(protein) > 20:
+            warnings.append({
+                'title': 'High Protein Content',
+                'message': f'This product contains {protein}g of protein per 100g. High protein intake may stress kidneys.',
+                'severity': 'medium'
+            })
+
+        for ingredient in phosphorus_ingredients:
+            if ingredient in ingredients_str:
+                warnings.append({
+                    'title': 'May Contain High Phosphorus',
+                    'message': 'This product may contain high phosphorus levels. Consult with your doctor.',
+                    'severity': 'medium'
+                })
+                break
+
+    return warnings
+
+
 def geocode_zipcode(zipcode):
     """Convert zip code to coordinates using Nominatim (OpenStreetMap)"""
     try:
@@ -525,6 +673,7 @@ def scan_barcode():
             }), 400
 
         barcode = data['barcode'].strip()
+        filters = data.get('filters', {'dietary': [], 'health': []})
 
         if not barcode:
             return jsonify({
@@ -693,6 +842,19 @@ def scan_barcode():
         alternatives = generate_product_alternatives(product_info)
         if alternatives:
             product_info['product_alternatives'] = alternatives
+
+        # Check health warnings based on user filters
+        nutriments_for_check = {
+            'sugars': round_nutrient(product.get('nutriments', {}).get('sugars_100g')),
+            'salt': round_nutrient(product.get('nutriments', {}).get('salt_100g')),
+            'sodium': round_nutrient(product.get('nutriments', {}).get('sodium_100g')),
+            'saturated_fat': round_nutrient(product.get('nutriments', {}).get('saturated-fat_100g')),
+            'proteins': round_nutrient(product.get('nutriments', {}).get('proteins_100g'))
+        }
+
+        health_warnings = check_health_warnings(product_info, nutriments_for_check, filters)
+        if health_warnings:
+            product_info['health_warnings'] = health_warnings
 
         return jsonify(product_info), 200
 

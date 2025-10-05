@@ -974,6 +974,55 @@
                 <button id="searchBtn" class="btn-primary">🔎 Search</button>
             </div>
 
+            <div style="margin-top: 25px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid #e0e0e0;">
+                <h3 style="margin-bottom: 15px; color: #2c3e50; font-size: 1.1em;">Health & Dietary Filters</h3>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; color: #555; display: block; margin-bottom: 8px;">Dietary Restrictions:</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_vegan" value="vegan"> Vegan
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_vegetarian" value="vegetarian"> Vegetarian
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_halal" value="halal"> Halal
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_kosher" value="kosher"> Kosher
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_gluten_free" value="gluten_free"> Gluten-Free
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_lactose_free" value="lactose_free"> Lactose-Free
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-weight: 600; color: #555; display: block; margin-bottom: 8px;">Health Conditions:</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_diabetes" value="diabetes"> Diabetes
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_hypertension" value="hypertension"> Hypertension
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_heart_disease" value="heart_disease"> Heart Disease
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_celiac" value="celiac"> Celiac Disease
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="filter_kidney_disease" value="kidney_disease"> Kidney Disease
+                        </label>
+                    </div>
+                </div>
+            </div>
+
             <div class="input-group" style="margin-top: 30px; border-top: 2px solid #e0e0e0; padding-top: 25px;">
                 <input type="text" id="zipCodeInput" placeholder="Enter ZIP code to find local sustainable markets..." maxlength="5" pattern="[0-9]{5}">
                 <button id="findMarketsBtn" class="btn-primary">🌱 Find Local Markets</button>
@@ -1005,6 +1054,9 @@
                     <div class="scores" id="scores"></div>
                 </div>
             </div>
+
+            <!-- Health Warnings -->
+            <div id="healthWarnings" style="display: none;"></div>
 
             <!-- AI Analysis Summaries -->
             <div id="aiSummaries" style="display: none;">
@@ -1267,6 +1319,32 @@
             }, 3000);
         }
 
+        // Get selected filters
+        function getSelectedFilters() {
+            const filters = {
+                dietary: [],
+                health: []
+            };
+
+            // Dietary restrictions
+            const dietaryFilters = ['vegan', 'vegetarian', 'halal', 'kosher', 'gluten_free', 'lactose_free'];
+            dietaryFilters.forEach(filter => {
+                if (document.getElementById(`filter_${filter}`)?.checked) {
+                    filters.dietary.push(filter);
+                }
+            });
+
+            // Health conditions
+            const healthFilters = ['diabetes', 'hypertension', 'heart_disease', 'celiac', 'kidney_disease'];
+            healthFilters.forEach(filter => {
+                if (document.getElementById(`filter_${filter}`)?.checked) {
+                    filters.health.push(filter);
+                }
+            });
+
+            return filters;
+        }
+
         // Search for product
         async function searchProduct(barcode) {
             hideError();
@@ -1274,12 +1352,17 @@
             showLoading();
 
             try {
+                const filters = getSelectedFilters();
+
                 const response = await fetch('/scan', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ barcode: barcode })
+                    body: JSON.stringify({
+                        barcode: barcode,
+                        filters: filters
+                    })
                 });
 
                 const data = await response.json();
@@ -1321,6 +1404,34 @@
             }
 
             document.getElementById('productBrand').textContent = data.brand;
+
+            // Health warnings
+            const healthWarningsEl = document.getElementById('healthWarnings');
+            if (data.health_warnings && data.health_warnings.length > 0) {
+                const warningsHTML = data.health_warnings.map(warning => `
+                    <div style="background: ${warning.severity === 'high' ? '#ffebee' : '#fff3e0'};
+                                border-left: 4px solid ${warning.severity === 'high' ? '#d32f2f' : '#f57c00'};
+                                padding: 15px;
+                                margin: 10px 0;
+                                border-radius: 4px;">
+                        <div style="display: flex; align-items: start; gap: 10px;">
+                            <span style="font-size: 24px;">${warning.severity === 'high' ? '⚠️' : 'ℹ️'}</span>
+                            <div style="flex: 1;">
+                                <strong style="color: ${warning.severity === 'high' ? '#d32f2f' : '#f57c00'}; font-size: 1.1em;">
+                                    ${warning.title}
+                                </strong>
+                                <p style="margin: 8px 0 0 0; color: #555;">
+                                    ${warning.message}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                healthWarningsEl.innerHTML = warningsHTML;
+                healthWarningsEl.style.display = 'block';
+            } else {
+                healthWarningsEl.style.display = 'none';
+            }
 
             // Product image
             const productImage = document.getElementById('productImage');
