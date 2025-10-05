@@ -658,6 +658,89 @@
             font-size: 0.9em;
         }
 
+        /* Product Alternatives Styles */
+        .alternatives-container {
+            background: #f0f8f0;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 25px;
+            border-left: 4px solid #27ae60;
+        }
+
+        .alternatives-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alternatives-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .alternative-card {
+            background: white;
+            padding: 18px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .alternative-card:hover {
+            border-color: #27ae60;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.1);
+        }
+
+        .alternative-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-size: 1.05em;
+        }
+
+        .alternative-brand {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .alternative-reason {
+            color: #555;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .alternative-benefits {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 0.85em;
+        }
+
+        .benefit-icon {
+            color: #27ae60;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .benefit-text {
+            color: #666;
+            line-height: 1.4;
+        }
+
         .waste-tip-text strong {
             color: #2c3e50;
             font-weight: 600;
@@ -1183,6 +1266,38 @@
                         </div>
                     `;
                     metricsContent.innerHTML += wasteTipsHTML;
+                }
+
+                // Display product alternatives
+                if (data.product_alternatives && data.product_alternatives.length > 0) {
+                    const alternativesHTML = `
+                        <div class="alternatives-container">
+                            <h4 class="alternatives-title">
+                                <span>🌱</span>
+                                <span>Healthier & More Sustainable Alternatives</span>
+                            </h4>
+                            <div class="alternatives-grid">
+                                ${data.product_alternatives.map(alt => `
+                                    <div class="alternative-card">
+                                        <div class="alternative-name">${alt.name}</div>
+                                        <div class="alternative-brand">${alt.brand}</div>
+                                        <div class="alternative-reason">${alt.reason}</div>
+                                        <div class="alternative-benefits">
+                                            <div class="benefit-item">
+                                                <span class="benefit-icon">💚</span>
+                                                <span class="benefit-text">${alt.health_benefit}</span>
+                                            </div>
+                                            <div class="benefit-item">
+                                                <span class="benefit-icon">🌍</span>
+                                                <span class="benefit-text">${alt.sustainability_benefit}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    metricsContent.innerHTML += alternativesHTML;
                 }
             } else {
                 document.getElementById('sustainabilityMetricsSection').style.display = 'none';

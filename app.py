@@ -10,8 +10,6 @@ import os
 from werkzeug.utils import secure_filename
 from groq import Groq
 import json
-from dotenv import load_dotenv
-load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = 'scarletscanner-rutgers-2025'
@@ -98,15 +96,25 @@ Respond in JSON format with an array of tips:
 Keep each description very concise (one sentence, max 12 words) and actionable."""
 
         chat_completion = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a JSON generator. Only respond with valid JSON. Never include markdown formatting or explanations."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
             model="llama-3.3-70b-versatile",
-            temperature=0.6,
+            temperature=0.4,
             max_tokens=800,
+            response_format={"type": "json_object"}
         )
 
-        response_text = chat_completion.choices[0].message.content
+        response_text = chat_completion.choices[0].message.content.strip()
 
-        # Extract JSON from response
+        # Extract JSON from response if it has code blocks
         if '```json' in response_text:
             json_start = response_text.find('```json') + 7
             json_end = response_text.find('```', json_start)
@@ -121,6 +129,82 @@ Keep each description very concise (one sentence, max 12 words) and actionable."
 
     except Exception as e:
         print(f"Waste reduction tips error: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return None
+
+
+def generate_product_alternatives(product_info):
+    """
+    Generate healthier and more sustainable product alternatives
+    """
+    if not client:
+        return None
+
+    try:
+        prompt = f"""Based on this product, recommend 3 alternative products that are healthier and more sustainable.
+
+Product Information:
+- Name: {product_info.get('name', 'Unknown')}
+- Brand: {product_info.get('brand', 'Unknown')}
+- Categories: {product_info.get('categories', 'Unknown')}
+- Nutri-Score: {product_info.get('nutriscore_grade', 'N/A')}
+- Eco-Score: {product_info.get('ecoscore_grade', 'N/A')}
+
+Provide 3 specific alternative products that:
+1. Have better nutritional profiles (lower in sugar, salt, saturated fat, or higher in nutrients)
+2. Are more environmentally sustainable (organic, local, less packaging, better sourcing)
+3. Are realistic alternatives that consumers can actually find in stores
+
+Respond in JSON format:
+{{
+  "alternatives": [
+    {{
+      "name": "Product name",
+      "brand": "Brand name",
+      "reason": "Brief explanation why it's better (max 15 words)",
+      "health_benefit": "Key health improvement",
+      "sustainability_benefit": "Key environmental improvement"
+    }}
+  ]
+}}
+
+Keep each field concise and actionable."""
+
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a JSON generator. Only respond with valid JSON. Never include markdown formatting or explanations."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+            temperature=0.4,
+            max_tokens=1000,
+            response_format={"type": "json_object"}
+        )
+
+        response_text = chat_completion.choices[0].message.content.strip()
+
+        # Extract JSON from response if it has code blocks
+        if '```json' in response_text:
+            json_start = response_text.find('```json') + 7
+            json_end = response_text.find('```', json_start)
+            response_text = response_text[json_start:json_end].strip()
+        elif '```' in response_text:
+            json_start = response_text.find('```') + 3
+            json_end = response_text.find('```', json_start)
+            response_text = response_text[json_start:json_end].strip()
+
+        alternatives_data = json.loads(response_text)
+        return alternatives_data.get('alternatives', [])
+
+    except Exception as e:
+        print(f"Product alternatives error: {e}")
         import traceback
         print(traceback.format_exc())
         return None
@@ -168,15 +252,25 @@ Respond in JSON format:
 }}"""
 
         chat_completion = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a JSON generator. Only respond with valid JSON. Never include markdown formatting or explanations."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
             model="llama-3.3-70b-versatile",
-            temperature=0.5,
+            temperature=0.3,
             max_tokens=1000,
+            response_format={"type": "json_object"}
         )
 
-        response_text = chat_completion.choices[0].message.content
+        response_text = chat_completion.choices[0].message.content.strip()
 
-        # Extract JSON from response
+        # Extract JSON from response if it has code blocks
         if '```json' in response_text:
             json_start = response_text.find('```json') + 7
             json_end = response_text.find('```', json_start)
@@ -308,6 +402,11 @@ def scan_barcode():
         waste_tips = generate_waste_reduction_tips(product_info)
         if waste_tips:
             product_info['waste_reduction_tips'] = waste_tips
+
+        # Generate product alternatives
+        alternatives = generate_product_alternatives(product_info)
+        if alternatives:
+            product_info['product_alternatives'] = alternatives
 
         return jsonify(product_info), 200
 
