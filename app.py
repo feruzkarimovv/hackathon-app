@@ -11,6 +11,8 @@ from werkzeug.utils import secure_filename
 from groq import Groq
 import json
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 # Load environment variables from .env file
 load_dotenv()
@@ -308,36 +310,19 @@ def generate_sustainability_metrics(product_info):
         return None
 
     try:
-        prompt = f"""Analyze this food product using HowGood's 8 core sustainability metrics. Based on publicly available data about typical products in this category, provide scores from 0-10 (10 being best) for each metric.
+        prompt = f"""Score product on 8 sustainability metrics (0-10, 10=best):
+Product: {product_info.get('name', 'Unknown')} | {product_info.get('categories', 'Unknown')}
 
-Product Information:
-- Name: {product_info.get('name', 'Unknown')}
-- Brand: {product_info.get('brand', 'Unknown')}
-- Categories: {product_info.get('categories', 'Unknown')}
-- Ingredients: {product_info.get('ingredients', 'Not available')}
-- Labels: {product_info.get('labels', 'None')}
-
-Provide scores (0-10) and brief explanations for:
-
-1. **Greenhouse Gas Emissions**: Carbon footprint (cradle-to-farm gate) of ingredients
-2. **Processing**: Energy used to process the ingredients
-3. **Blue Water Usage**: Water required to grow the ingredients
-4. **Land Occupation**: Land required to produce the ingredients
-5. **Soil Health**: Impact on soil from growing ingredients
-6. **Labor Risk**: Overall labor risk in ingredient production
-7. **Animal Welfare**: How animals are treated (if applicable)
-8. **Biodiversity**: Impact on biodiversity from growing ingredients
-
-Respond in JSON format:
+JSON with ALL 8 metrics & brief explanations (max 8 words each):
 {{
-  "greenhouse_gas": {{"score": 7, "explanation": "Low emissions due to..."}},
-  "processing": {{"score": 6, "explanation": "Moderate processing..."}},
-  "water_usage": {{"score": 5, "explanation": "Average water use..."}},
-  "land_use": {{"score": 8, "explanation": "Efficient land use..."}},
-  "soil_health": {{"score": 7, "explanation": "Minimal soil impact..."}},
-  "labor_risk": {{"score": 6, "explanation": "Moderate labor standards..."}},
-  "animal_welfare": {{"score": 5, "explanation": "Standard practices..." or "N/A - plant-based"}},
-  "biodiversity": {{"score": 6, "explanation": "Neutral biodiversity impact..."}}
+  "greenhouse_gas": {{"score": 7, "explanation": "Low emissions"}},
+  "processing": {{"score": 6, "explanation": "Moderate processing"}},
+  "water_usage": {{"score": 5, "explanation": "Average water"}},
+  "land_use": {{"score": 8, "explanation": "Efficient land"}},
+  "soil_health": {{"score": 7, "explanation": "Minimal impact"}},
+  "labor_risk": {{"score": 6, "explanation": "Moderate standards"}},
+  "animal_welfare": {{"score": 5, "explanation": "Standard practices"}},
+  "biodiversity": {{"score": 6, "explanation": "Neutral impact"}}
 }}"""
 
         chat_completion = client.chat.completions.create(
@@ -353,7 +338,7 @@ Respond in JSON format:
             ],
             model="llama-3.3-70b-versatile",
             temperature=0.3,
-            max_tokens=1000,
+            max_tokens=600,
             response_format={"type": "json_object"}
         )
 
@@ -789,17 +774,26 @@ def scan_barcode():
         nutriscore_grade = product.get('nutriscore_grade', '').upper()
         ecoscore_grade = product.get('ecoscore_grade', '').upper()
 
-        # Generate AI summaries for both scores
-        nutriscore_summary = generate_score_summary('Nutri-Score', nutriscore_grade or 'Not Available', product_info['name'])
-        ecoscore_summary = generate_score_summary('Eco-Score', ecoscore_grade or 'Not Available', product_info['name'])
-
         product_info['nutriscore_grade'] = nutriscore_grade or 'N/A'
         product_info['ecoscore_grade'] = ecoscore_grade or 'N/A'
-        product_info['nutriscore_summary'] = nutriscore_summary
-        product_info['ecoscore_summary'] = ecoscore_summary
 
-        # Generate HowGood sustainability metrics
-        sustainability_metrics = generate_sustainability_metrics(product_info)
+        # Run all AI generation tasks in parallel for faster response
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            # Submit all tasks
+            nutri_future = executor.submit(generate_score_summary, 'Nutri-Score', nutriscore_grade or 'Not Available', product_info['name'])
+            eco_future = executor.submit(generate_score_summary, 'Eco-Score', ecoscore_grade or 'Not Available', product_info['name'])
+            sustainability_future = executor.submit(generate_sustainability_metrics, product_info)
+            waste_future = executor.submit(generate_waste_reduction_tips, product_info)
+            alternatives_future = executor.submit(generate_product_alternatives, product_info)
+
+            # Get results
+            product_info['nutriscore_summary'] = nutri_future.result()
+            product_info['ecoscore_summary'] = eco_future.result()
+            sustainability_metrics = sustainability_future.result()
+            waste_tips = waste_future.result()
+            alternatives = alternatives_future.result()
+
+        # Process sustainability metrics
         if sustainability_metrics:
             product_info['sustainability_metrics'] = sustainability_metrics
 
@@ -819,7 +813,7 @@ def scan_barcode():
             overall_score = round((sum(scores) / len(scores)) * 10, 1) if scores else 0
             product_info['overall_sustainability_score'] = overall_score
 
-            # Generate community impact actions
+            # Generate community impact actions (non-AI, so fast)
             community_actions = generate_community_impact_actions(product_info, overall_score)
             if community_actions:
                 product_info['community_impact_actions'] = community_actions
@@ -833,13 +827,10 @@ def scan_barcode():
                 combined_score = round((overall_score + community_impact_score) / 2, 1)
                 product_info['combined_overall_score'] = combined_score
 
-        # Generate waste reduction tips
-        waste_tips = generate_waste_reduction_tips(product_info)
+        # Add waste tips and alternatives from parallel execution
         if waste_tips:
             product_info['waste_reduction_tips'] = waste_tips
 
-        # Generate product alternatives
-        alternatives = generate_product_alternatives(product_info)
         if alternatives:
             product_info['product_alternatives'] = alternatives
 
